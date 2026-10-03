@@ -1,0 +1,19 @@
+{
+  "name": "farmer-app-workspace",
+  "version": "1.0.0",
+  "description": "Production-ready Farmer E-Commerce + Farm Machinery Rental mobile app & backend",
+  "scripts": {
+    "start:backend": "cd backend && npm start",
+    "start:frontend": "cd frontend && npx expo start --web",
+    "seed": "cd backend && npm run seed"
+  },
+  "keywords": [
+    "farmer-app",
+    "react-native",
+    "agriculture",
+    "farm-machinery-rental",
+    "kisan-kendra"
+  ],
+  "author": "Google DeepMind Advanced Agentic Coding",
+  "license": "ISC"
+}
