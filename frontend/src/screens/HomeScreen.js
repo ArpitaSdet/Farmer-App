@@ -78,13 +78,14 @@ export const HomeScreen = ({
 
   // Data States
   const [categories, setCategories] = useState([]);
-  const [banners, setBanners] = useState(DEFAULT_BANNERS);
+  const [banners, setBanners] = useState([]);
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [cropRecommendations, setCropRecommendations] = useState([]);
   const [nearbyMachines, setNearbyMachines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
+  const [marketData, setMarketData] = useState(null);
 
   // Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -120,15 +121,18 @@ export const HomeScreen = ({
     } catch (err) {
       console.warn('Home fetch failed:', err.message);
       setIsOffline(true);
+      setBanners(DEFAULT_BANNERS);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  // Live stock & machine availability
-  useRealtime(['stock:updated', 'machine:updated', 'catalog:changed'], (payload, event) => {
-    if (event === 'stock:updated') {
+  // Live stock, machine availability & market weather updates
+  useRealtime(['stock:updated', 'machine:updated', 'catalog:changed', 'market:updated'], (payload, event) => {
+    if (event === 'market:updated') {
+      setMarketData(payload);
+    } else if (event === 'stock:updated') {
       const patch = (list) =>
         list.map((p) => (p.variantId === payload.variantId ? { ...p, stock: payload.stock, inStock: payload.stock > 0 } : p));
       setFeaturedProducts(patch);
@@ -138,13 +142,22 @@ export const HomeScreen = ({
     }
   });
 
+  const loadMarket = async () => {
+    try {
+      const res = await api.getMarketData(location.district || location.taluk || 'Dharwad', location.latitude, location.longitude);
+      setMarketData(res);
+    } catch (_) {}
+  };
+
   useEffect(() => {
     loadHomeData();
-  }, []);
+    loadMarket();
+  }, [location.district]);
 
   const onRefresh = () => {
     setRefreshing(true);
     loadHomeData();
+    loadMarket();
   };
 
   const handleSearchSubmit = () => {
@@ -212,17 +225,40 @@ export const HomeScreen = ({
           onBannerPress={handleBannerPress}
         />
 
-        {/* TODO [Phase 6 - Mandi & Weather]: Fetch live APMC mandi prices from Agmarknet API and render ticker */}
-        <View style={{ marginHorizontal: Spacing.l, marginVertical: 6, padding: 10, backgroundColor: '#FFFDE7', borderRadius: 8, borderWidth: 1, borderColor: '#FFF59D', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={{ fontSize: 16 }}>🌤️</Text>
-            <View>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#F57F17' }}>Hubballi APMC Mandi & Weather</Text>
-              <Text style={{ fontSize: 11, color: '#795548' }}>Cotton: ₹7,450/qtl • Bengal Gram: ₹6,100/qtl (Clear Sky)</Text>
+        {/* Live APMC Mandi & Weather Card */}
+        {!!marketData && (
+          <View style={{ marginHorizontal: Spacing.l, marginVertical: 6, padding: 12, backgroundColor: '#FFFDE7', borderRadius: 10, borderWidth: 1, borderColor: '#FFF59D' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={{ fontSize: 18 }}>🌤️</Text>
+                <View>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#F57F17' }}>
+                    {marketData.district} Mandi & Weather
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#795548', marginTop: 1 }}>
+                    {marketData.weather ? `${marketData.weather.temperature}°C · ${marketData.weather.condition}${marketData.weather.goodSprayingWindow ? ' · Good for spraying' : ''}` : 'Live agricultural forecast'}
+                  </Text>
+                </View>
+              </View>
+              {marketData.updatedAt && (Date.now() - new Date(marketData.updatedAt).getTime() < 3600000) && (
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#9E9D24', backgroundColor: '#FFF9C4', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                  LIVE
+                </Text>
+              )}
             </View>
+
+            {marketData.mandiPrices && marketData.mandiPrices.length > 0 && (
+              <View style={{ marginTop: 8, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#FFF9C4' }}>
+                <Text style={{ fontSize: 11, color: '#5D4037', fontWeight: '600' }} numberOfLines={2}>
+                  {marketData.mandiPrices.slice(0, 3).map((p) => `${p.commodity}: ₹${p.modalPrice}/qtl`).join(' • ')}
+                </Text>
+                <Text style={{ fontSize: 9, color: '#8D6E63', marginTop: 3 }}>
+                  Updated {new Date(marketData.updatedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+              </View>
+            )}
           </View>
-          <Text style={{ fontSize: 10, fontWeight: '800', color: '#9E9D24', backgroundColor: '#FFF9C4', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>LIVE</Text>
-        </View>
+        )}
 
         {/* 4. Quick Actions (Buy Inputs vs Rent Machines) */}
         <QuickActions

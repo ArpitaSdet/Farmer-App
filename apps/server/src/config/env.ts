@@ -49,6 +49,7 @@ const EnvSchema = z.object({
   S3_PUBLIC_CDN_URL: z.string().optional(),
 
   GOOGLE_MAPS_SERVER_KEY: z.string().optional(),
+  DATA_GOV_API_KEY: z.string().optional(),
   EXPO_ACCESS_TOKEN: z.string().optional(),
   SENTRY_DSN: z.string().optional(),
   PLATFORM_GSTIN: z.string().default('29AABCK1234F1Z5'),

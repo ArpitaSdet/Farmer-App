@@ -8,6 +8,7 @@ const LIVE_EVENTS = ['order:updated', 'rental:updated', 'machine:updated', 'user
 export const Overview: React.FC = () => {
   const { data: stats, error } = useLiveData<any>('/admin/stats', LIVE_EVENTS);
   const { data: orders } = useLiveData<any[]>('/admin/orders', ['order:updated']);
+  const { data: market } = useLiveData<any>('/market', ['market:updated']);
   const [feed, setFeed] = useState<Activity[]>([]);
 
   // Live activity stream straight from the socket
@@ -62,6 +63,17 @@ export const Overview: React.FC = () => {
           <div className="stat-label">🗂️ Products / Machines</div>
           <div className="stat-value">{stats ? `${stats.products} / ${stats.machines}` : '—'}</div>
         </div>
+        {market && (
+          <div className="stat-card" style={{ gridColumn: 'span 2' }}>
+            <div className="stat-label">🌤️ Live {market.district} Weather & Mandi</div>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: '#1b5e20', marginTop: '4px' }}>
+              {market.weather ? `${market.weather.temperature}°C (${market.weather.condition}) · Wind: ${market.weather.windSpeed} km/h` : 'Weather loading…'}
+            </div>
+            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+              {(market.mandiPrices || []).slice(0, 3).map((p: any) => `${p.commodity}: ₹${p.modalPrice}/qtl`).join(' • ')}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="table-card">

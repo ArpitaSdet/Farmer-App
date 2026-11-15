@@ -27,8 +27,10 @@ import { trackingRoutes } from './routes/trackingRoutes';
 import { supportRoutes } from './routes/supportRoutes';
 import { notificationRoutes } from './routes/notificationRoutes';
 import { addressRoutes, reviewRoutes, ownerRoutes, chatRoutes } from './routes/opsRoutes';
+import { marketRoutes } from './routes/marketRoutes';
 import { checkRoomAccess, getOnlineDriversTelemetry } from './services/realtimeService';
 import { registerIo } from './services/events';
+import { marketService } from './services/marketService';
 
 const app = express();
 const server = http.createServer(app);
@@ -158,9 +160,14 @@ apiRouter.use('/webhooks', webhookRoutes);
 apiRouter.use('/addresses', addressRoutes);
 apiRouter.use('/owner', ownerRoutes);
 apiRouter.use('/chat', chatRoutes);
+apiRouter.use('/market', marketRoutes);
 apiRouter.use('/', reviewRoutes);
 apiRouter.use('/', catalogRoutes);
 apiRouter.use('/admin', adminRoutes);
+
+apiRouter.use('/config', (_req, res) => {
+  res.status(200).json({ success: true, data: { demoMode: env.DEMO_MODE } });
+});
 
 app.use(env.API_PREFIX, apiRouter);
 app.use('/api', apiRouter);
@@ -371,6 +378,7 @@ if (process.env.NODE_ENV !== 'test') {
   server.listen(env.PORT, () => {
     logger.info(`🚀 KRISHI Server running on port ${env.PORT} [${env.NODE_ENV}]`);
     logger.info(`📡 API available at http://localhost:${env.PORT}${env.API_PREFIX}`);
+    marketService.startPeriodicBroadcast();
   });
 }
 

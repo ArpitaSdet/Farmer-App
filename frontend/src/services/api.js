@@ -251,6 +251,10 @@ class ApiService {
     return this.post('/auth/verify-otp', payload);
   }
 
+  adminLogin(email, password, totpToken) {
+    return this.post('/auth/admin/login', { email, password, ...(totpToken ? { totpToken } : {}) });
+  }
+
   selectProfile(tempToken, role) {
     return this.post('/auth/select-profile', { tempToken, selectedRole: role });
   }
@@ -264,6 +268,15 @@ class ApiService {
   }
 
   /* ---------------- Catalog ---------------- */
+
+  getMarketData(district = 'Dharwad', lat, lng) {
+    const q = new URLSearchParams({ district, ...(lat ? { lat } : {}), ...(lng ? { lng } : {}) }).toString();
+    return this.get(`/market?${q}`);
+  }
+
+  getServerConfig() {
+    return this.get('/config');
+  }
 
   async getHomeFeed() {
     const d = await this.get('/home');
