@@ -9,6 +9,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Linking,
 } from 'react-native';
 import { Colors } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
@@ -187,6 +188,15 @@ export const LoginScreen = () => {
           ))}
         </View>
 
+        {/* Admin work happens in the web console; open it in the phone's browser */}
+        <TouchableOpacity
+          style={styles.adminBtn}
+          onPress={() => Linking.openURL(`${api.serverUrl}/admin`).catch(() => setError('Could not open the browser'))}
+        >
+          <Text style={styles.adminTitle}>🛠️ Admin panel</Text>
+          <Text style={styles.adminSub}>Opens in browser · admin@kisankendra.in / Admin@123</Text>
+        </TouchableOpacity>
+
         {showServer && <Text style={styles.serverLink}>Server: {api.serverUrl}</Text>}
         {showServer && (
           <View style={styles.serverBox}>
@@ -274,6 +284,15 @@ const styles = StyleSheet.create({
   error: { color: Colors.danger, marginTop: 12, fontWeight: '600', textAlign: 'center' },
   demoTitle: { marginTop: 26, marginBottom: 10, fontWeight: '700', color: Colors.textSecondary, fontSize: 14 },
   demoRow: { flexDirection: 'row', gap: 8 },
+  adminBtn: {
+    marginTop: 14,
+    backgroundColor: '#37474F',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  adminTitle: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  adminSub: { color: '#CFD8DC', fontSize: 11, marginTop: 2 },
   demoCard: {
     flex: 1,
     backgroundColor: Colors.cardSurface,
