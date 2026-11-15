@@ -14,9 +14,11 @@ export const MachineCard = ({ machine, onViewDetails, onRentNow, onCallOwner }) 
         <Image source={{ uri: machine.image }} style={styles.image} resizeMode="cover" />
         
         {/* Horsepower Badge */}
-        <View style={styles.hpBadge}>
-          <Text style={styles.hpText}>⚡ {machine.horsepower || '45 HP'}</Text>
-        </View>
+        {!!machine.horsepower && (
+          <View style={styles.hpBadge}>
+            <Text style={styles.hpText}>⚡ {machine.horsepower}</Text>
+          </View>
+        )}
 
         {/* Distance Badge */}
         <View style={styles.distanceBadge}>
@@ -39,7 +41,7 @@ export const MachineCard = ({ machine, onViewDetails, onRentNow, onCallOwner }) 
               {machine.name}
             </Text>
             <Text style={styles.locationText}>
-              🏡 {machine.location}, {machine.district}
+              🏡 {machine.village && machine.district ? `${machine.village}, ${machine.district}` : machine.location || machine.district}
             </Text>
           </View>
         </View>

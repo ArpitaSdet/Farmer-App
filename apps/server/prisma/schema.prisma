@@ -477,6 +477,7 @@ model Machine {
   hourlyRatePaise   Int
   dailyRatePaise    Int
   operatorAvailable Boolean               @default(true)
+  horsepower        String?
   latitude          Float
   longitude         Float
   rating            Float?

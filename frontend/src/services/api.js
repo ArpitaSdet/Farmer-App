@@ -173,7 +173,7 @@ class ApiService {
     securityDeposit: Math.round(rupees(m.hourlyRatePaise) * 0.2 * 4),
     deliveryAvailable: true,
     deliveryRatePerKm: 0,
-    horsepower: '',
+    horsepower: m.horsepower || '',
   });
 
   normalizeOrder = (o) => {

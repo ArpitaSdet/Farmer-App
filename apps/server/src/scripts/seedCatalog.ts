@@ -167,6 +167,7 @@ async function seedCatalog() {
             hourlyRatePaise,
             dailyRatePaise,
             operatorAvailable: m.operatorIncluded !== false,
+            horsepower: m.horsepower || (m.type === 'Tractor' ? '45 HP' : m.type === 'Harvester' ? '75 HP' : null),
             latitude: lat,
             longitude: lng,
             rating: m.rating || 4.8,
