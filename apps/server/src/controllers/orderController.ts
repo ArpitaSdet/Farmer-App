@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/prisma';
 import { AppError } from '../middleware/errorHandler';
 import { ErrorCode } from '@krishi/shared';
-import { createRazorpayOrder, createRazorpayRefund } from '../services/payment';
+import { createRazorpayOrder, createRazorpayRefund, verifyRazorpayPaymentSignature } from '../services/payment';
 import { broadcast, notifyUser } from '../services/events';
 import { publishOrder } from '../services/lifecycle';
 import { logger } from '../config/logger';
@@ -480,6 +480,62 @@ export async function checkDeliverability(req: Request, res: Response, next: Nex
         estimatedDeliveryDays: 2,
       },
     });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function verifyOrderPayment(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const { razorpayPaymentId, razorpayOrderId, razorpaySignature } = req.body;
+
+    if (!razorpayPaymentId || !razorpayOrderId || !razorpaySignature) {
+      throw new AppError(400, ErrorCode.VALIDATION_ERROR, 'Payment verification details required');
+    }
+
+    const isValid = verifyRazorpayPaymentSignature(razorpayOrderId, razorpayPaymentId, razorpaySignature);
+    if (!isValid) {
+      throw new AppError(400, ErrorCode.VALIDATION_ERROR, 'Invalid payment signature');
+    }
+
+    const order = await prisma.order.findFirst({
+      where: { OR: [{ id }, { humanId: id }] },
+    });
+    if (!order) throw new AppError(404, ErrorCode.NOT_FOUND, 'Order not found');
+
+    await prisma.$transaction([
+      prisma.order.update({
+        where: { id: order.id },
+        data: { status: 'CONFIRMED', paymentStatus: 'PAID' },
+      }),
+      prisma.payment.upsert({
+        where: { razorpayOrderId },
+        create: {
+          orderId: order.id,
+          razorpayOrderId,
+          razorpayPaymentId,
+          amountPaise: order.totalPaise,
+          method: 'RAZORPAY',
+          status: 'PAID',
+        },
+        update: {
+          razorpayPaymentId,
+          status: 'PAID',
+        },
+      }),
+      prisma.orderStatusLog.create({
+        data: {
+          orderId: order.id,
+          fromStatus: order.status,
+          toStatus: 'CONFIRMED',
+          reason: `Verified online payment (${razorpayPaymentId})`,
+        },
+      }),
+    ]);
+
+    await publishOrder(order.id);
+    return res.status(200).json({ success: true, data: { status: 'CONFIRMED', paymentStatus: 'PAID' } });
   } catch (err) {
     next(err);
   }

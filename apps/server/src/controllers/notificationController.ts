@@ -72,3 +72,34 @@ export async function markAllAsRead(req: Request, res: Response, next: NextFunct
     next(err);
   }
 }
+
+export async function registerDeviceToken(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = req.user!.id;
+    const { token, platform = 'android' } = req.body;
+
+    if (!token) {
+      throw new AppError(400, ErrorCode.VALIDATION_ERROR, 'Device token is required');
+    }
+
+    const dt = await prisma.deviceToken.upsert({
+      where: { token },
+      create: {
+        userId,
+        token,
+        platform,
+      },
+      update: {
+        userId,
+        platform,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: dt,
+    });
+  } catch (err) {
+    next(err);
+  }
+}

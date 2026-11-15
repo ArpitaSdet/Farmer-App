@@ -166,7 +166,13 @@ apiRouter.use('/', catalogRoutes);
 apiRouter.use('/admin', adminRoutes);
 
 apiRouter.use('/config', (_req, res) => {
-  res.status(200).json({ success: true, data: { demoMode: env.DEMO_MODE } });
+  res.status(200).json({
+    success: true,
+    data: {
+      demoMode: env.DEMO_MODE,
+      razorpayKeyId: env.RAZORPAY_KEY_ID || null,
+    },
+  });
 });
 
 app.use(env.API_PREFIX, apiRouter);
