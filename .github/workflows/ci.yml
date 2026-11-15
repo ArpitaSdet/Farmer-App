@@ -1,0 +1,67 @@
+name: KRISHI CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: krishi_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Shared Package
+        run: npm run build --workspace=@krishi/shared
+
+      - name: Validate Prisma Schema
+        run: cd apps/server && npx prisma validate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/krishi_test?schema=public
+
+      - name: Typecheck Server
+        run: npm run typecheck --workspace=@krishi/server
+
+      - name: Run Server Unit & Integration Tests
+        run: npm test --workspace=@krishi/server
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/krishi_test?schema=public
+          REDIS_URL: redis://localhost:6379
+          JWT_ACCESS_SECRET: test_jwt_access_secret_for_ci_build_32_chars
+          JWT_REFRESH_SECRET: test_jwt_refresh_secret_for_ci_build_32_chars

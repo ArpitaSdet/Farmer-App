@@ -1,0 +1,24 @@
+# Render Blueprint: one web service hosts the API, Socket.IO, admin console (/admin) and farmer web app (/).
+# DATABASE_URL comes from a free Neon Postgres database (paste it when Render asks).
+# The farmer web app (frontend/dist) is prebuilt and committed; rebuild it with `npx expo export --platform web --output-dir dist` in frontend/.
+services:
+  - type: web
+    name: kisan-kendra-api
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build:shared && npm run build --workspace=@krishi/server && npm run build --workspace=@krishi/admin
+    startCommand: npm run start:prod --workspace=@krishi/server
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: DEMO_MODE
+        value: "true"
+      - key: SMS_PROVIDER
+        value: console
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true

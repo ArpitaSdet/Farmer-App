@@ -1,0 +1,727 @@
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  FARMER
+  DRIVER
+  OWNER
+  ADMIN
+}
+
+enum AdminSubRole {
+  SUPER_ADMIN
+  CATALOG
+  OPERATIONS
+  SUPPORT
+  FINANCE
+}
+
+enum OrderStatus {
+  PLACED
+  CONFIRMED
+  PACKED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+enum RentalStatus {
+  CONFIRMED
+  MACHINE_ASSIGNED
+  OPERATOR_ASSIGNED
+  DISPATCHED
+  NEAR_FARM
+  ARRIVED
+  STARTED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  RAZORPAY
+  COD
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum JobType {
+  ORDER_DELIVERY
+  RENTAL
+}
+
+enum DeliveryJobStatus {
+  ASSIGNED
+  ACCEPTED
+  STARTED
+  ARRIVED
+  DELIVERED
+  FAILED
+}
+
+enum StockMovementType {
+  INWARD
+  OUTWARD_ORDER
+  ADJUSTMENT_DAMAGE
+  ADJUSTMENT_AUDIT
+  RETURN
+}
+
+model User {
+  id              String         @id @default(uuid())
+  phone           String         @unique
+  role            UserRole       @default(FARMER)
+  adminSubRole    AdminSubRole?
+  name            String?
+  village         String?
+  district        String?
+  state           String?
+  pincode         String?
+  preferredLang   String         @default("en")
+  isBlocked       Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Admin Web Credentials & 2FA
+  email           String?        @unique
+  passwordHash    String?
+  totpSecret      String?
+  totpEnabled     Boolean        @default(false)
+  failedLoginAttempts Int        @default(0)
+  lockedUntil     DateTime?
+
+  // Farmer Onboarding Details
+  landSizeAcres   Float?
+  mainCrops       String?
+  farmLat         Float?
+  farmLng         Float?
+
+  sessions        Session[]
+  addresses       Address[]
+  deviceTokens    DeviceToken[]
+  notifications   Notification[]
+  orders          Order[]
+  rentals         Rental[]
+  reviews         Review[]
+  supportTickets  SupportTicket[]
+  driverProfile   Driver?
+  ownerProfile    OwnerProfile?
+  auditLogs       AuditLog[]     @relation("ActorAuditLogs")
+  ownedMachines   Machine[]      @relation("OwnedMachines")
+
+  @@index([phone])
+  @@index([role])
+  @@index([email])
+}
+
+model Session {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String   @unique
+  deviceInfo       String?
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+
+  @@index([userId])
+}
+
+model OtpAttempt {
+  id         String    @id @default(uuid())
+  phone      String
+  otpHash    String
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  verifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([phone, createdAt])
+}
+
+model Address {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String   @default("Home")
+  village   String
+  district  String
+  state     String
+  pincode   String
+  latitude  Float
+  longitude Float
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  orders    Order[]
+  rentals   Rental[]
+
+  @@index([userId])
+  @@index([pincode])
+}
+
+model DeviceToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  platform  String   @default("android")
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  dataJson  Json?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  actor      User?    @relation("ActorAuditLogs", fields: [actorId], references: [id])
+  action     String
+  entity     String
+  entityId   String
+  beforeJson Json?
+  afterJson  Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+model Category {
+  id           String    @id @default(uuid())
+  name         String    @unique
+  slug         String    @unique
+  iconUrl      String?
+  displayOrder Int       @default(0)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  products     Product[]
+}
+
+model Brand {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  logoUrl   String?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  products  Product[]
+}
+
+model Product {
+  id            String           @id @default(uuid())
+  name          String
+  slug          String           @unique
+  description   String
+  categoryId    String
+  category      Category         @relation(fields: [categoryId], references: [id])
+  brandId       String?
+  brand         Brand?           @relation(fields: [brandId], references: [id])
+  suitableCrops String[]         @default([])
+  safetyInfo    String?
+  isPublished   Boolean          @default(true)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  variants      ProductVariant[]
+  images        ProductImage[]
+  reviews       Review[]
+
+  @@index([categoryId])
+  @@index([isPublished])
+}
+
+model ProductVariant {
+  id             String          @id @default(uuid())
+  productId      String
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  packSize       String
+  sku            String          @unique
+  pricePaise     Int
+  mrpPaise       Int
+  gstRate        Float           @default(18.0)
+  stock          Int             @default(0)
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+
+  stockMovements StockMovement[]
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+
+  @@index([productId])
+  @@index([sku])
+}
+
+model ProductImage {
+  id           String   @id @default(uuid())
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url          String
+  thumbnailUrl String?
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([productId])
+}
+
+model Review {
+  id                 String   @id @default(uuid())
+  productId          String
+  product            Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User     @relation(fields: [userId], references: [id])
+  rating             Int      @default(5)
+  comment            String?
+  isVerifiedPurchase Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  @@index([productId])
+}
+
+model Coupon {
+  id                String    @id @default(uuid())
+  code              String    @unique
+  discountPercent   Float
+  maxDiscountPaise  Int
+  minOrderPaise     Int       @default(0)
+  expiresAt         DateTime?
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+}
+
+model Banner {
+  id           String    @id @default(uuid())
+  title        String
+  imageUrl     String
+  targetScreen String?
+  deepLink     String?
+  displayOrder Int       @default(0)
+  startDate    DateTime?
+  endDate      DateTime?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now()) @updatedAt
+}
+
+model StockMovement {
+  id           String            @id @default(uuid())
+  variantId    String
+  variant      ProductVariant    @relation(fields: [variantId], references: [id])
+  quantity     Int
+  type         StockMovementType
+  reason       String
+  balanceAfter Int
+  referenceId  String?
+  createdAt    DateTime          @default(now())
+
+  @@index([variantId])
+}
+
+model Cart {
+  id        String     @id @default(uuid())
+  userId    String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  items     CartItem[]
+}
+
+model CartItem {
+  id        String         @id @default(uuid())
+  cartId    String
+  cart      Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id])
+  quantity  Int            @default(1)
+  createdAt DateTime       @default(now())
+
+  @@unique([cartId, variantId])
+}
+
+model Order {
+  id                String           @id @default(uuid())
+  humanId           String           @unique
+  userId            String
+  user              User             @relation(fields: [userId], references: [id])
+  addressId         String
+  address           Address          @relation(fields: [addressId], references: [id])
+  status            OrderStatus      @default(PLACED)
+  totalPaise        Int
+  gstPaise          Int              @default(0)
+  deliveryFeePaise  Int              @default(0)
+  discountPaise     Int              @default(0)
+  paymentMethod     PaymentMethod    @default(COD)
+  paymentStatus     PaymentStatus    @default(PENDING)
+  deliverySlot      String?
+  notes             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  items             OrderItem[]
+  statusLogs        OrderStatusLog[]
+  payments          Payment[]
+  invoice           Invoice?
+  deliveryJob       DeliveryJob?
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id             String         @id @default(uuid())
+  orderId        String
+  order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId      String
+  variant        ProductVariant @relation(fields: [variantId], references: [id])
+  productName    String
+  packSize       String
+  quantity       Int
+  unitPricePaise Int
+  gstRate        Float
+  totalPaise     Int
+
+  @@index([orderId])
+}
+
+model OrderStatusLog {
+  id         String      @id @default(uuid())
+  orderId    String
+  order      Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromStatus OrderStatus
+  toStatus   OrderStatus
+  reason     String?
+  actorId    String?
+  createdAt  DateTime    @default(now())
+
+  @@index([orderId])
+}
+
+model Payment {
+  id                 String        @id @default(uuid())
+  orderId            String?
+  order              Order?        @relation(fields: [orderId], references: [id])
+  rentalId           String?
+  rental             Rental?       @relation(fields: [rentalId], references: [id])
+  razorpayOrderId    String?       @unique
+  razorpayPaymentId  String?       @unique
+  razorpaySignature  String?
+  amountPaise        Int
+  status             PaymentStatus @default(PENDING)
+  method             PaymentMethod
+  createdAt          DateTime      @default(now())
+  refunds            Refund[]
+
+  @@index([orderId])
+  @@index([rentalId])
+}
+
+model Refund {
+  id               String   @id @default(uuid())
+  paymentId        String
+  payment          Payment  @relation(fields: [paymentId], references: [id])
+  razorpayRefundId String?  @unique
+  amountPaise      Int
+  reason           String?
+  status           String   @default("PROCESSED")
+  createdAt        DateTime @default(now())
+
+  @@index([paymentId])
+}
+
+model Invoice {
+  id            String   @id @default(uuid())
+  orderId       String   @unique
+  order         Order    @relation(fields: [orderId], references: [id])
+  invoiceNumber String   @unique
+  hsnCode       String
+  gstNumber     String
+  subtotalPaise Int
+  cgstPaise     Int
+  sgstPaise     Int
+  igstPaise     Int      @default(0)
+  totalPaise    Int
+  pdfUrl        String?
+  createdAt     DateTime @default(now())
+}
+
+model Machine {
+  id                String                @id @default(uuid())
+  name              String
+  type              String
+  description       String
+  ownerId           String?
+  owner             User?                 @relation("OwnedMachines", fields: [ownerId], references: [id])
+  village           String?
+  district          String?
+  hourlyRatePaise   Int
+  dailyRatePaise    Int
+  operatorAvailable Boolean               @default(true)
+  latitude          Float
+  longitude         Float
+  rating            Float?
+  isAvailable       Boolean               @default(true)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  images            MachineImage[]
+  availabilities    MachineAvailability[]
+  rentals           Rental[]
+
+  @@index([type])
+  @@index([isAvailable])
+  @@index([ownerId])
+}
+
+model MachineImage {
+  id           String   @id @default(uuid())
+  machineId    String
+  machine      Machine  @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  url          String
+  thumbnailUrl String?
+  viewType     String   @default("front")
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([machineId])
+}
+
+model MachineAvailability {
+  id         String   @id @default(uuid())
+  machineId  String
+  machine    Machine  @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  date       DateTime
+  isBooked   Boolean  @default(false)
+  isBlackout Boolean  @default(false)
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  @@unique([machineId, date])
+}
+
+model Rental {
+  id               String            @id @default(uuid())
+  humanId          String            @unique
+  machineId        String
+  machine          Machine           @relation(fields: [machineId], references: [id])
+  userId           String
+  user             User              @relation(fields: [userId], references: [id])
+  addressId        String
+  address          Address           @relation(fields: [addressId], references: [id])
+  status           RentalStatus      @default(CONFIRMED)
+  startDate        DateTime
+  durationHours    Float
+  includeOperator  Boolean           @default(true)
+  deliveryRequired Boolean           @default(true)
+  totalPaise       Int
+  depositPaise     Int               @default(0)
+  paymentStatus    PaymentStatus     @default(PENDING)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  statusLogs       RentalStatusLog[]
+  payments         Payment[]
+  deliveryJob      DeliveryJob?
+
+  @@index([userId])
+  @@index([machineId])
+  @@index([status])
+}
+
+model RentalStatusLog {
+  id        String       @id @default(uuid())
+  rentalId  String
+  rental    Rental       @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+  fromStatus RentalStatus
+  toStatus   RentalStatus
+  reason    String?
+  actorId   String?
+  createdAt DateTime     @default(now())
+
+  @@index([rentalId])
+}
+
+model Driver {
+  id                         String        @id @default(uuid())
+  userId                     String        @unique
+  user                       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                       String
+  phone                      String        @unique
+  licenceNumber              String
+  aadhaarNumber              String?
+  kycStatus                  String        @default("PENDING_APPROVAL") // PENDING_APPROVAL, APPROVED, REJECTED
+  rejectionReason            String?
+  isAvailable                Boolean       @default(true)
+  boundDeviceId              String?
+  pendingDeviceId            String?
+  deviceChangePendingApproval Boolean      @default(false)
+  invitedByPhone             String?
+  approvedAt                 DateTime?
+  approvedById               String?
+  createdAt                  DateTime      @default(now())
+
+  vehicle                    Vehicle?
+  deliveryJobs               DeliveryJob[]
+  locationPings              LocationPing[]
+
+  @@index([isAvailable])
+  @@index([kycStatus])
+}
+
+model OwnerProfile {
+  id                String    @id @default(uuid())
+  userId            String    @unique
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName      String?
+  aadhaarNumber     String
+  panNumber         String
+  bankAccountNumber String
+  bankIfsc          String
+  bankAccountName   String
+  photoUrl          String?
+  kycStatus         String    @default("PENDING_APPROVAL") // PENDING_APPROVAL, APPROVED, REJECTED
+  rejectionReason   String?
+  approvedAt        DateTime?
+  approvedById      String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([kycStatus])
+}
+
+model Vehicle {
+  id            String   @id @default(uuid())
+  driverId      String   @unique
+  driver        Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  vehicleNumber String   @unique
+  vehicleType   String   @default("MINI_TRUCK")
+  model         String?
+  createdAt     DateTime @default(now())
+}
+
+model DeliveryJob {
+  id                 String            @id @default(uuid())
+  orderId            String?           @unique
+  order              Order?            @relation(fields: [orderId], references: [id])
+  rentalId           String?           @unique
+  rental             Rental?           @relation(fields: [rentalId], references: [id])
+  driverId           String?
+  driver             Driver?           @relation(fields: [driverId], references: [id])
+  type               JobType           @default(ORDER_DELIVERY)
+  status             DeliveryJobStatus @default(ASSIGNED)
+  pickupLat          Float
+  pickupLng          Float
+  dropoffLat         Float
+  dropoffLng         Float
+  otpHash            String?
+  cashCollectedPaise Int?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  locationPings      LocationPing[]
+
+  @@index([driverId])
+  @@index([status])
+}
+
+model LocationPing {
+  id         String      @id @default(uuid())
+  jobId      String
+  job        DeliveryJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  driverId   String
+  driver     Driver      @relation(fields: [driverId], references: [id])
+  latitude   Float
+  longitude  Float
+  heading    Float?
+  speed      Float?
+  accuracy   Float?
+  recordedAt DateTime    @default(now())
+
+  @@index([jobId, recordedAt])
+}
+
+model ServiceArea {
+  id                        String   @id @default(uuid())
+  name                      String
+  pincode                   String   @unique
+  deliveryFeePaise          Int      @default(4900)
+  minOrderFreeDeliveryPaise Int      @default(99900)
+  isActive                  Boolean  @default(true)
+  createdAt                 DateTime @default(now())
+
+  @@index([pincode])
+}
+
+model SupportTicket {
+  id        String          @id @default(uuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id])
+  subject   String
+  category  String          @default("GENERAL")
+  status    String          @default("OPEN")
+  priority  String          @default("MEDIUM")
+  createdAt DateTime        @default(now())
+  messages  TicketMessage[]
+
+  @@index([userId])
+}
+
+model TicketMessage {
+  id            String        @id @default(uuid())
+  ticketId      String
+  ticket        SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  senderId      String
+  message       String
+  attachmentUrl String?
+  createdAt     DateTime      @default(now())
+
+  @@index([ticketId])
+}
+
+model ChatMessage {
+  id         String   @id @default(uuid())
+  room       String
+  senderId   String
+  senderName String?
+  senderRole String
+  text       String
+  createdAt  DateTime @default(now())
+
+  @@index([room, createdAt])
+}
+
+model FAQ {
+  id           String   @id @default(uuid())
+  question     String
+  answer       String
+  category     String   @default("GENERAL")
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+}
+
+model Settings {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  valueJson Json
+  updatedAt DateTime @updatedAt
+}

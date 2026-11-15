@@ -1,19 +1,35 @@
 {
-  "name": "farmer-app-workspace",
+  "name": "krishi-platform",
   "version": "1.0.0",
-  "description": "Production-ready Farmer E-Commerce + Farm Machinery Rental mobile app & backend",
+  "private": true,
+  "description": "KRISHI — Production Farmer E-Commerce + Farm Machinery Rental Platform",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
-    "start:backend": "cd backend && npm start",
-    "start:frontend": "cd frontend && npx expo start --web",
-    "seed": "cd backend && npm run seed"
+    "build": "npm run build --workspaces --if-present",
+    "build:shared": "npm run build --workspace=@krishi/shared",
+    "start:backend": "npm run dev --workspace=@krishi/server",
+    "start:admin": "npm run dev --workspace=@krishi/admin",
+    "start:frontend": "cd frontend && npx expo start",
+    "start:web": "cd frontend && npx expo start --web",
+    "start:server": "npm run dev --workspace=@krishi/server",
+    "bootstrap-admin": "npm run bootstrap-admin --workspace=@krishi/server",
+    "seed:catalog": "npm run seed:catalog --workspace=@krishi/server",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
   },
   "keywords": [
-    "farmer-app",
-    "react-native",
     "agriculture",
-    "farm-machinery-rental",
-    "kisan-kendra"
+    "krishi",
+    "farm-machinery",
+    "rental",
+    "ecommerce",
+    "expo",
+    "typescript"
   ],
-  "author": "Google DeepMind Advanced Agentic Coding",
-  "license": "ISC"
+  "author": "KRISHI Engineering Team",
+  "license": "UNLICENSED"
 }

@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "Kisan Kendra - Farmer App",
+    "slug": "kisan-kendra",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "primaryColor": "#1B5E20",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundColor": "#1B5E20"
+      },
+      "package": "com.kisankendra.farmerapp",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "INTERNET"
+      ]
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Kisan Kendra uses your location to share live delivery tracking with farmers."
+        }
+      ],
+      "expo-build-properties",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ],
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1B5E20"
+    },
+    "extra": {
+      "apiUrl": "https://kisan-kendra-api.onrender.com"
+    }
+  }
+}

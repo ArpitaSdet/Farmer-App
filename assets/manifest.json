@@ -1,0 +1,182 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-10-13T11:20:37.001Z",
+  "totalAssets": 35,
+  "assets": [
+    {
+      "path": "machinery/cultivators/cultivator_field.jpg",
+      "sizeBytes": 55336,
+      "filename": "cultivator_field.jpg"
+    },
+    {
+      "path": "machinery/cultivators/cultivator_machine.jpg",
+      "sizeBytes": 101341,
+      "filename": "cultivator_machine.jpg"
+    },
+    {
+      "path": "machinery/harvesters/harvester_paddy.jpg",
+      "sizeBytes": 144331,
+      "filename": "harvester_paddy.jpg"
+    },
+    {
+      "path": "machinery/harvesters/harvester_wheat.jpg",
+      "sizeBytes": 71760,
+      "filename": "harvester_wheat.jpg"
+    },
+    {
+      "path": "machinery/ploughs/disc_plough_field.jpg",
+      "sizeBytes": 86517,
+      "filename": "disc_plough_field.jpg"
+    },
+    {
+      "path": "machinery/ploughs/mb_plough_machine.jpg",
+      "sizeBytes": 101341,
+      "filename": "mb_plough_machine.jpg"
+    },
+    {
+      "path": "machinery/power-tillers/power_tiller_machine.jpg",
+      "sizeBytes": 116875,
+      "filename": "power_tiller_machine.jpg"
+    },
+    {
+      "path": "machinery/power-tillers/power_tiller_wetland.jpg",
+      "sizeBytes": 184296,
+      "filename": "power_tiller_wetland.jpg"
+    },
+    {
+      "path": "machinery/rotavators/rotavator_field.jpg",
+      "sizeBytes": 53325,
+      "filename": "rotavator_field.jpg"
+    },
+    {
+      "path": "machinery/rotavators/rotavator_machine.jpg",
+      "sizeBytes": 144331,
+      "filename": "rotavator_machine.jpg"
+    },
+    {
+      "path": "machinery/seed-drills/seed_drill_field.jpg",
+      "sizeBytes": 116731,
+      "filename": "seed_drill_field.jpg"
+    },
+    {
+      "path": "machinery/seed-drills/seed_drill_machine.jpg",
+      "sizeBytes": 108106,
+      "filename": "seed_drill_machine.jpg"
+    },
+    {
+      "path": "machinery/sprayers/boom_sprayer_machine.jpg",
+      "sizeBytes": 172875,
+      "filename": "boom_sprayer_machine.jpg"
+    },
+    {
+      "path": "machinery/sprayers/orchard_sprayer_machine.jpg",
+      "sizeBytes": 146163,
+      "filename": "orchard_sprayer_machine.jpg"
+    },
+    {
+      "path": "machinery/threshers/thresher_field.jpg",
+      "sizeBytes": 110860,
+      "filename": "thresher_field.jpg"
+    },
+    {
+      "path": "machinery/threshers/thresher_machine.jpg",
+      "sizeBytes": 107972,
+      "filename": "thresher_machine.jpg"
+    },
+    {
+      "path": "machinery/tractors/tractor_field.jpg",
+      "sizeBytes": 86517,
+      "filename": "tractor_field.jpg"
+    },
+    {
+      "path": "machinery/tractors/tractor_front.jpg",
+      "sizeBytes": 139046,
+      "filename": "tractor_front.jpg"
+    },
+    {
+      "path": "machinery/trailers/tractor_trailer_trolley.jpg",
+      "sizeBytes": 101341,
+      "filename": "tractor_trailer_trolley.jpg"
+    },
+    {
+      "path": "machinery/trailers/trailer_field_loaded.jpg",
+      "sizeBytes": 139046,
+      "filename": "trailer_field_loaded.jpg"
+    },
+    {
+      "path": "products/animal-feed/cattle_feed.jpg",
+      "sizeBytes": 121325,
+      "filename": "cattle_feed.jpg"
+    },
+    {
+      "path": "products/animal-feed/poultry_feed.jpg",
+      "sizeBytes": 134906,
+      "filename": "poultry_feed.jpg"
+    },
+    {
+      "path": "products/crop-protection/bio_pesticide.jpg",
+      "sizeBytes": 828263,
+      "filename": "bio_pesticide.jpg"
+    },
+    {
+      "path": "products/crop-protection/fungicide_protection.jpg",
+      "sizeBytes": 910982,
+      "filename": "fungicide_protection.jpg"
+    },
+    {
+      "path": "products/fertilizers/npk_fertilizer.jpg",
+      "sizeBytes": 880153,
+      "filename": "npk_fertilizer.jpg"
+    },
+    {
+      "path": "products/fertilizers/organic_fertilizer.jpg",
+      "sizeBytes": 866633,
+      "filename": "organic_fertilizer.jpg"
+    },
+    {
+      "path": "products/irrigation/drip_irrigation_kit.jpg",
+      "sizeBytes": 875658,
+      "filename": "drip_irrigation_kit.jpg"
+    },
+    {
+      "path": "products/irrigation/water_pump.jpg",
+      "sizeBytes": 970299,
+      "filename": "water_pump.jpg"
+    },
+    {
+      "path": "products/seeds/chilli_seeds.jpg",
+      "sizeBytes": 873457,
+      "filename": "chilli_seeds.jpg"
+    },
+    {
+      "path": "products/seeds/paddy_seeds.jpg",
+      "sizeBytes": 864232,
+      "filename": "paddy_seeds.jpg"
+    },
+    {
+      "path": "products/seeds/tomato_seeds.jpg",
+      "sizeBytes": 753335,
+      "filename": "tomato_seeds.jpg"
+    },
+    {
+      "path": "products/sprayers/battery_sprayer.jpg",
+      "sizeBytes": 146163,
+      "filename": "battery_sprayer.jpg"
+    },
+    {
+      "path": "products/sprayers/manual_sprayer.jpg",
+      "sizeBytes": 101341,
+      "filename": "manual_sprayer.jpg"
+    },
+    {
+      "path": "products/tools/hand_tools.jpg",
+      "sizeBytes": 846163,
+      "filename": "hand_tools.jpg"
+    },
+    {
+      "path": "products/tools/pruning_tools.jpg",
+      "sizeBytes": 888524,
+      "filename": "pruning_tools.jpg"
+    }
+  ]
+}

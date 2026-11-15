@@ -1,0 +1,41 @@
+KISAN KENDRA - Demo App Login Details
+=====================================
+
+INSTALL
+1. Copy KisanKendra.apk to the phone (WhatsApp / USB / Google Drive).
+2. Tap it -> allow "Install unknown apps" when Android asks -> Install.
+
+CONNECT TO THE SERVER (do this once, on the login screen)
+Tap "Server: ..." at the bottom of the login screen, type the address, tap Save.
+
+  * Same Wi-Fi as the laptop (laptop must be ON with the server running):
+        http://192.168.29.3:5000
+  * After hosting on Render:
+        https://kisan-kendra-api.onrender.com   (or your Render URL)
+
+LOGINS  (OTP is always 123456 - or just tap the demo cards)
+  Farmer          9876543210   Ramesh Patil
+  Farmer 2        9876500001   Lakshmi Hegde
+  Machine Owner   9845000001   Basavaraj Patil
+  Machine Owner 2 9845000002   Mallikarjun Gowda
+  Driver          9900000001   Suresh Naik
+  Driver 2        9900000002   Ravi Kumar
+
+ADMIN WEB PANEL (open in a browser)
+  Same Wi-Fi:  http://192.168.29.3:5000/admin
+  Hosted:      https://<your-render-url>/admin
+  Email:       admin@kisankendra.in
+  Password:    Admin@123
+
+COUPONS TO TRY
+  KISANFIRST  10% off (max Rs 200, min order Rs 300)
+  RABI2026    15% off (max Rs 500, min order Rs 1500)
+  DRIP500      5% off (max Rs 1000, min order Rs 10000)
+
+TRY THE LIVE FLOW (use 2 phones, or phone + admin panel)
+  1. Farmer: add items -> checkout -> place order.
+  2. Admin panel: Orders -> Confirm -> Pack (driver gets the job instantly).
+  3. Driver: Accept -> Start Trip. Farmer sees the driver live + a 4-digit OTP.
+  4. Driver: Arrived -> Complete with the farmer's OTP -> order shows Delivered.
+  Rentals: Farmer books a machine -> Owner accepts -> Driver delivers with OTP
+           -> Owner taps Start Work -> Work Completed.
