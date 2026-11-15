@@ -2,7 +2,7 @@
   "expo": {
     "name": "Kisan Kendra - Farmer App",
     "slug": "kisan-kendra",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "primaryColor": "#1B5E20",
     "userInterfaceStyle": "light",
@@ -19,7 +19,8 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "INTERNET"
-      ]
+      ],
+      "versionCode": 2
     },
     "web": {
       "bundler": "metro"
@@ -49,7 +50,7 @@
       "backgroundColor": "#1B5E20"
     },
     "extra": {
-      "apiUrl": "https://kisan-kendra-api.onrender.com"
+      "apiUrl": "https://farmer-app-klid.onrender.com"
     }
   }
 }

@@ -2,7 +2,8 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
-const SERVER_KEY = 'kk_server_url';
+// v2: ignore server addresses saved by the 1.0.0 test build (e.g. a LAN IP)
+const SERVER_KEY = 'kk_server_url_v2';
 
 // Hosted backend baked in at build time (app.json -> expo.extra.apiUrl or EXPO_PUBLIC_API_URL).
 const getDefaultServerUrl = () => {

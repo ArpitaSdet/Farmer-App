@@ -100,7 +100,9 @@ export const LoginScreen = () => {
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.hero}>
-          <Text style={styles.logo}>🌾</Text>
+          <Text style={styles.logo} onLongPress={() => setShowServer((v) => !v)}>
+            🌾
+          </Text>
           <Text style={styles.brand}>Kisan Kendra</Text>
           <Text style={styles.tagline}>Farm inputs & machinery rental, delivered to your field</Text>
         </View>
@@ -168,7 +170,7 @@ export const LoginScreen = () => {
           {!!error && <Text style={styles.error}>{error}</Text>}
         </View>
 
-        <Text style={styles.demoTitle}>Try a demo account (one tap)</Text>
+        <Text style={styles.demoTitle}>Demo accounts — tap to log in (OTP 123456)</Text>
         <View style={styles.demoRow}>
           {DEMO_ACCOUNTS.map((acc) => (
             <TouchableOpacity
@@ -185,9 +187,7 @@ export const LoginScreen = () => {
           ))}
         </View>
 
-        <TouchableOpacity onPress={() => setShowServer((s) => !s)}>
-          <Text style={styles.serverLink}>Server: {api.serverUrl}</Text>
-        </TouchableOpacity>
+        {showServer && <Text style={styles.serverLink}>Server: {api.serverUrl}</Text>}
         {showServer && (
           <View style={styles.serverBox}>
             <TextInput

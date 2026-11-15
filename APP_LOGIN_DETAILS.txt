@@ -1,19 +1,17 @@
-KISAN KENDRA - Demo App Login Details
-=====================================
+KISAN KENDRA - App Access Details (v1.0.1)
+==========================================
 
-INSTALL
-1. Copy KisanKendra.apk to the phone (WhatsApp / USB / Google Drive).
-2. Tap it -> allow "Install unknown apps" when Android asks -> Install.
+INSTALL THE ANDROID APP
+1. Copy KisanKendra.apk to the phone (USB / Google Drive / WhatsApp).
+2. Open it from Files > Downloads. Allow "Install unknown apps" when asked.
+3. Tap Install (if Play Protect warns, tap "Install anyway").
+   The app connects to the live server automatically - nothing to configure.
 
-CONNECT TO THE SERVER (do this once, on the login screen)
-Tap "Server: ..." at the bottom of the login screen, type the address, tap Save.
+NOTE: The demo server sleeps when unused. If the first screen takes long,
+wait ~60 seconds and pull down to refresh.
 
-  * Same Wi-Fi as the laptop (laptop must be ON with the server running):
-        http://192.168.29.3:5000
-  * After hosting on Render:
-        https://kisan-kendra-api.onrender.com   (or your Render URL)
-
-LOGINS  (OTP is always 123456 - or just tap the demo cards)
+APP LOGINS  (tap a demo card on the login screen, or type the number;
+             OTP is always 123456)
   Farmer          9876543210   Ramesh Patil
   Farmer 2        9876500001   Lakshmi Hegde
   Machine Owner   9845000001   Basavaraj Patil
@@ -21,21 +19,23 @@ LOGINS  (OTP is always 123456 - or just tap the demo cards)
   Driver          9900000001   Suresh Naik
   Driver 2        9900000002   Ravi Kumar
 
-ADMIN WEB PANEL (open in a browser)
-  Same Wi-Fi:  http://192.168.29.3:5000/admin
-  Hosted:      https://<your-render-url>/admin
-  Email:       admin@kisankendra.in
-  Password:    Admin@123
+WEB LINKS
+  Farmer web app:  https://farmer-app-klid.onrender.com
+  Admin panel:     https://farmer-app-klid.onrender.com/admin
+     Email:        admin@kisankendra.in
+     Password:     Admin@123
 
-COUPONS TO TRY
+COUPONS TO TRY AT CHECKOUT
   KISANFIRST  10% off (max Rs 200, min order Rs 300)
   RABI2026    15% off (max Rs 500, min order Rs 1500)
   DRIP500      5% off (max Rs 1000, min order Rs 10000)
 
-TRY THE LIVE FLOW (use 2 phones, or phone + admin panel)
-  1. Farmer: add items -> checkout -> place order.
-  2. Admin panel: Orders -> Confirm -> Pack (driver gets the job instantly).
-  3. Driver: Accept -> Start Trip. Farmer sees the driver live + a 4-digit OTP.
-  4. Driver: Arrived -> Complete with the farmer's OTP -> order shows Delivered.
-  Rentals: Farmer books a machine -> Owner accepts -> Driver delivers with OTP
-           -> Owner taps Start Work -> Work Completed.
+TRY THE LIVE FLOW (phone + admin panel, or two phones)
+  Order:  Farmer places an order
+          -> Admin panel: Orders > Confirm > Pack & assign driver
+          -> Driver app: Accept > Start Trip  (farmer sees driver + 4-digit OTP)
+          -> Driver: Arrived > Complete with farmer's OTP -> Delivered
+  Rental: Farmer books a machine -> Owner app: Accept
+          -> Driver delivers with the farmer's handover OTP
+          -> Owner: Start Field Work > Work Completed
+  Everything updates live on all screens - no refresh needed.
