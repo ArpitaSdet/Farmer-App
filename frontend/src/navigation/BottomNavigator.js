@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, BackHandler, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../theme/colors';
 import { Spacing } from '../theme/spacing';
 import { useLanguage } from '../context/LanguageContext';
@@ -17,6 +18,7 @@ import { CartScreen } from '../screens/CartScreen';
 export const BottomNavigator = () => {
   const { t } = useLanguage();
   const { cartCount } = useCart();
+  const insets = useSafeAreaInsets();
 
   const [activeTab, setActiveTab] = useState('Home'); // Home, Shop, Rent, Orders, Profile
   const [shopRouteParams, setShopRouteParams] = useState(null);
@@ -24,8 +26,34 @@ export const BottomNavigator = () => {
   const [ordersInitialTab, setOrdersInitialTab] = useState('products');
 
   const [cartVisible, setCartVisible] = useState(false);
-    const [notifVisible, setNotifVisible] = useState(false);
+  const [notifVisible, setNotifVisible] = useState(false);
   const [notifications, setNotifications] = useState([]);
+
+  // Android hardware back button handler
+  useEffect(() => {
+    const onBackPress = () => {
+      if (cartVisible) {
+        setCartVisible(false);
+        return true;
+      }
+      if (notifVisible) {
+        setNotifVisible(false);
+        return true;
+      }
+      if (activeTab !== 'Home') {
+        setActiveTab('Home');
+        return true;
+      }
+      Alert.alert('Exit Kisan Kendra', 'Do you want to exit the app?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Exit', onPress: () => BackHandler.exitApp() },
+      ]);
+      return true;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [cartVisible, notifVisible, activeTab]);
 
   const loadNotifications = async () => {
     try {
@@ -139,7 +167,7 @@ export const BottomNavigator = () => {
       )}
 
       {/* 5-Item Large Touch Bottom Navigation Bar */}
-      <View style={styles.bottomNav}>
+      <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 4), height: 68 + Math.max(insets.bottom - 4, 0) }]}>
         {navItems.map((item) => {
           const isActive = activeTab === item.key;
           return (
