@@ -1,11 +1,17 @@
-KISAN KENDRA - App Access Details (v1.0.1)
+KISAN KENDRA - App Access Details (v1.0.4)
 ==========================================
 
 INSTALL THE ANDROID APP
-1. Copy KisanKendra.apk to the phone (USB / Google Drive / WhatsApp).
-2. Open it from Files > Downloads. Allow "Install unknown apps" when asked.
+1. Copy KisanKendra-v1.0.4.apk to your phone (USB / Google Drive / WhatsApp).
+2. Open it from Files > Downloads. Allow "Install unknown apps" when prompted.
 3. Tap Install (if Play Protect warns, tap "Install anyway").
    The app connects to the live server automatically - nothing to configure.
+
+IN-APP ADMIN PORTAL
+  Open the app -> Tap "Admin Sign In" on the login screen:
+     Email:        admin@kisankendra.in
+     Password:     Admin@123
+  Full control tower inside the mobile app: Dashboard, Orders, Catalog, People/KYC, and More.
 
 NOTE: The demo server sleeps when unused. If the first screen takes long,
 wait ~60 seconds and pull down to refresh.

@@ -38,13 +38,18 @@ export async function sendPushNotification(payload: PushNotificationPayload): Pr
       data: payload.data || {},
     }));
 
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+      'Accept-Encoding': 'gzip, deflate',
+      'Content-Type': 'application/json',
+    };
+    if (process.env.EXPO_ACCESS_TOKEN) {
+      headers['Authorization'] = `Bearer ${process.env.EXPO_ACCESS_TOKEN}`;
+    }
+
     const res = await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Accept-Encoding': 'gzip, deflate',
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(messages),
     });
 

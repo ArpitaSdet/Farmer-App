@@ -1,6 +1,7 @@
 import type { Server as SocketIOServer } from 'socket.io';
 import { prisma } from '../config/prisma';
 import { logger } from '../config/logger';
+import { sendPushNotification } from './pushNotification';
 
 /**
  * Central real-time event bus. server.ts registers the Socket.IO instance;
@@ -50,6 +51,10 @@ export async function notifyUser(
       data: { userId, title, body, dataJson: data as any },
     });
     emitToUser(userId, 'notification:new', notification);
+    // Also dispatch Expo background push notification
+    sendPushNotification({ userId, title, body, data }).catch((err) => {
+      logger.warn({ err: err.message, userId }, 'Background push failed');
+    });
   } catch (err: any) {
     logger.warn({ err: err.message, userId }, 'Failed to create notification');
   }

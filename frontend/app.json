@@ -2,7 +2,7 @@
   "expo": {
     "name": "Kisan Kendra - Farmer App",
     "slug": "kisan-kendra",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "primaryColor": "#1B5E20",
     "userInterfaceStyle": "light",
@@ -20,7 +20,7 @@
         "ACCESS_COARSE_LOCATION",
         "INTERNET"
       ],
-      "versionCode": 4
+      "versionCode": 5
     },
     "web": {
       "bundler": "metro"
