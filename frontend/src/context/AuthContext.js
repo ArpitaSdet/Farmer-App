@@ -66,10 +66,16 @@ export const AuthProvider = ({ children }) => {
   /**
    * Verify the OTP. Returns { done: true } on login, or { roles, tempToken } when the
    * number has several approved profiles (e.g. farmer + machine owner) to choose from.
+   * Also supports direct admin token login: loginWithOtp(null, null, 'ADMIN', { adminToken, adminUser })
    */
-  const loginWithOtp = async (mobileNumber, otp, role) => {
+  const loginWithOtp = async (mobileNumber, otp, role, directSession) => {
     setLoading(true);
     try {
+      // Direct admin token login (email+password flow)
+      if (directSession?.adminToken) {
+        await startSession(directSession.adminToken, directSession.adminUser, 'ADMIN');
+        return { done: true };
+      }
       const data = await api.verifyOtp({ mobileNumber, otp, role });
       if (data.requiresProfileSelection) {
         return { roles: data.availableRoles, tempToken: data.tempToken };
