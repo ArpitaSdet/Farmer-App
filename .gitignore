@@ -24,5 +24,7 @@ frontend/android/
 *.apk
 *.idsig
 *.jar
+*.keystore
+*.patched
 # Prebuilt farmer web app is committed so Render's free build doesn't run the heavy Expo export
 !frontend/dist/

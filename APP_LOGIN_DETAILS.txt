@@ -2,9 +2,12 @@ KISAN KENDRA - App Access Details (v6 / v1.0.6)
 ==============================================
 
 INSTALL THE ANDROID APP
-1. Copy KisanKendra-v6.apk to your phone (USB / Google Drive / WhatsApp).
-2. Open it from Files > Downloads. Allow "Install unknown apps" when prompted.
-3. Tap Install (if Play Protect warns, tap "Install anyway").
+1. Choose the APK:
+   - For all modern phones (Recommended, ~25 MB): KisanKendra-v6-arm64.apk (ideal for WhatsApp)
+   - For any Android device / universal (~71 MB): KisanKendra-v6.apk
+2. Copy the APK to your phone (WhatsApp / Google Drive / USB).
+3. Open it from Files > Downloads. Allow "Install unknown apps" when prompted.
+4. Tap Install.
    The app connects to the live server automatically - nothing to configure.
 
 IN-APP ADMIN PORTAL
