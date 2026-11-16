@@ -4,7 +4,7 @@
  * Supports: Farmer / Machine Owner / Delivery Partner / Admin
  * Flow: Choose role → Enter phone + name → OTP → Login
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
