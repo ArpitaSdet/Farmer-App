@@ -11,15 +11,17 @@ import {
   RefreshControl,
   ActivityIndicator,
   Linking,
+  Platform,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { useAuth } from '../context/AuthContext';
 import { api, rupees } from '../services/api';
 import { useRealtime } from '../services/realtime';
 import { ChatModal } from '../components/ChatModal';
+import { LiveMap } from '../components/LiveMap';
 
 const BLUE = '#1565C0';
-const PING_MS = 10000;
+const PING_MS = 5000;
 
 const NEXT_STEP = {
   ASSIGNED: { status: 'ACCEPTED', label: '✓ Accept Job' },
@@ -60,8 +62,39 @@ export const DeliveryScreen = ({ onLogout }) => {
   const [otp, setOtp] = useState('');
   const [cash, setCash] = useState('');
   const [chat, setChat] = useState(null);
-  const [useGps, setUseGps] = useState(false);
+  const [useGps, setUseGps] = useState(true); // Phone GPS by default
+  const [gpsStatus, setGpsStatus] = useState('checking'); // 'active' | 'weak' | 'missing'
+  const [showPermDialog, setShowPermDialog] = useState(false);
+  const [currentCoords, setCurrentCoords] = useState(null);
   const simPos = useRef({}); // jobId -> {lat,lng} for simulated trips
+  const offlineQueue = useRef([]); // pings saved when offline
+
+  const requestGpsPermissions = async () => {
+    try {
+      const fg = await Location.getForegroundPermissionsAsync();
+      if (fg.status !== 'granted') {
+        const req = await Location.requestForegroundPermissionsAsync();
+        if (req.status !== 'granted') {
+          setGpsStatus('missing');
+          setUseGps(false);
+          setShowPermDialog(true);
+          return;
+        }
+      }
+      setUseGps(true);
+      setGpsStatus('active');
+
+      // Request background permission after foreground
+      try {
+        const bg = await Location.getBackgroundPermissionsAsync();
+        if (bg.status !== 'granted') {
+          await Location.requestBackgroundPermissionsAsync();
+        }
+      } catch (_) {}
+    } catch (_) {
+      setGpsStatus('missing');
+    }
+  };
 
   const load = useCallback(async () => {
     try {
@@ -78,42 +111,100 @@ export const DeliveryScreen = ({ onLogout }) => {
 
   useEffect(() => {
     load();
+    requestGpsPermissions();
   }, [load]);
 
   // New assignments / cancellations show up instantly
   useRealtime(['job:updated', 'notification:new'], () => load());
 
-  // Stream location for trips in progress (phone GPS, or a simulated drive towards the farm)
-  useEffect(() => {
-    const live = jobs.filter((j) => j.status === 'STARTED');
-    if (!live.length) return undefined;
-    let cancelled = false;
-    const tick = async () => {
-      for (const j of live) {
-        try {
-          let lat;
-          let lng;
-          if (useGps) {
-            const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-            lat = pos.coords.latitude;
-            lng = pos.coords.longitude;
-          } else {
-            const cur = simPos.current[j.id] || { lat: j.pickupLat, lng: j.pickupLng };
-            lat = cur.lat + (j.dropoffLat - cur.lat) * 0.2;
-            lng = cur.lng + (j.dropoffLng - cur.lng) * 0.2;
-            simPos.current[j.id] = { lat, lng };
-          }
-          if (!cancelled) await api.sendDriverLocation(j.id, lat, lng, 30);
-        } catch (_) {
-          // keep trying on the next tick
-        }
-      }
+  const flushOfflinePings = async () => {
+    if (offlineQueue.current.length === 0) return;
+    const toSend = [...offlineQueue.current];
+    offlineQueue.current = [];
+    try {
+      await api.sendBatchDriverLocation(toSend);
+    } catch (_) {
+      offlineQueue.current = [...toSend, ...offlineQueue.current].slice(-50);
+    }
+  };
+
+  const sendPing = async (jobId, coords) => {
+    setCurrentCoords({ lat: coords.latitude, lng: coords.longitude, heading: coords.heading });
+    const pingData = {
+      jobId,
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      speed: coords.speed != null && coords.speed >= 0 ? Math.round(coords.speed * 3.6) : 30,
+      heading: coords.heading != null && coords.heading >= 0 ? Math.round(coords.heading) : 0,
+      accuracy: coords.accuracy || 10,
+      timestamp: Date.now(),
     };
-    tick();
-    const timer = setInterval(tick, PING_MS);
+    try {
+      await api.sendDriverLocation(
+        jobId,
+        pingData.latitude,
+        pingData.longitude,
+        pingData.speed,
+        pingData.heading,
+        pingData.accuracy
+      );
+      setGpsStatus(coords.accuracy && coords.accuracy > 35 ? 'weak' : 'active');
+      flushOfflinePings();
+    } catch (_) {
+      offlineQueue.current.push(pingData);
+      setGpsStatus('weak');
+    }
+  };
+
+  // Watch position or simulate route for trips in progress (STARTED or ARRIVED)
+  useEffect(() => {
+    const live = jobs.filter((j) => j.status === 'STARTED' || j.status === 'ARRIVED');
+    if (!live.length) return undefined;
+    let sub = null;
+    let cancelled = false;
+
+    if (useGps) {
+      Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          timeInterval: 5000,
+          distanceInterval: 20,
+        },
+        (loc) => {
+          if (cancelled) return;
+          const { latitude, longitude, speed, heading, accuracy } = loc.coords;
+          for (const j of live) {
+            sendPing(j.id, { latitude, longitude, speed, heading, accuracy });
+          }
+        }
+      ).then((s) => {
+        sub = s;
+      }).catch(() => {
+        setGpsStatus('weak');
+      });
+    } else {
+      const tick = async () => {
+        for (const j of live) {
+          const cur = simPos.current[j.id] || { lat: j.pickupLat, lng: j.pickupLng };
+          const lat = cur.lat + (j.dropoffLat - cur.lat) * 0.2;
+          const lng = cur.lng + (j.dropoffLng - cur.lng) * 0.2;
+          simPos.current[j.id] = { lat, lng };
+          if (!cancelled) {
+            sendPing(j.id, { latitude: lat, longitude: lng, speed: 30, heading: 45, accuracy: 5 });
+          }
+        }
+      };
+      tick();
+      const timer = setInterval(tick, PING_MS);
+      return () => {
+        cancelled = true;
+        clearInterval(timer);
+      };
+    }
+
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      if (sub) sub.remove();
     };
   }, [jobs, useGps]);
 
@@ -122,8 +213,10 @@ export const DeliveryScreen = ({ onLogout }) => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         alert('Location permission denied — using simulated route.');
+        setGpsStatus('missing');
         return;
       }
+      setGpsStatus('active');
     }
     setUseGps(value);
   };
@@ -192,13 +285,32 @@ export const DeliveryScreen = ({ onLogout }) => {
         </TouchableOpacity>
       </View>
 
+      {/* GPS Status Indicator */}
+      <View style={styles.gpsIndicatorRow}>
+        <View style={styles.gpsIndicatorBadge}>
+          <Text style={styles.gpsIndicatorText}>
+            GPS Signal:{' '}
+            {gpsStatus === 'active'
+              ? '🟢 Active (Phone GPS)'
+              : gpsStatus === 'weak'
+              ? '🟡 Weak / Offline Queue'
+              : '🔴 Permission Required'}
+          </Text>
+        </View>
+        {gpsStatus === 'missing' && (
+          <TouchableOpacity style={styles.fixGpsBtn} onPress={requestGpsPermissions}>
+            <Text style={styles.fixGpsBtnText}>Enable GPS</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
       <View style={styles.toggles}>
         <View style={styles.toggle}>
           <Text style={styles.toggleLabel}>{online ? '🟢 Online' : '⚪ Offline'}</Text>
           <Switch value={online} onValueChange={setOnline} trackColor={{ true: '#90CAF9' }} thumbColor={online ? BLUE : '#ccc'} />
         </View>
         <View style={styles.toggle}>
-          <Text style={styles.toggleLabel}>{useGps ? '📡 Phone GPS' : '🧭 Simulated route'}</Text>
+          <Text style={styles.toggleLabel}>{useGps ? '📡 Phone GPS' : '🧭 Demo route'}</Text>
           <Switch value={useGps} onValueChange={toggleGps} trackColor={{ true: '#90CAF9' }} thumbColor={useGps ? BLUE : '#ccc'} />
         </View>
       </View>
@@ -240,6 +352,24 @@ export const DeliveryScreen = ({ onLogout }) => {
                   <Text style={styles.cardLine}>🧾 {d.items}</Text>
                   {d.codDue > 0 && <Text style={styles.cod}>💵 Collect cash: ₹{d.codDue}</Text>}
                   {j.status === 'STARTED' && <Text style={styles.live}>● Sharing live location with farmer</Text>}
+
+                  {/* Route Map to Farm */}
+                  {(j.status === 'STARTED' || j.status === 'ARRIVED') && (
+                    <View style={styles.driverMapContainer}>
+                      <Text style={styles.driverMapTitle}>🗺️ Route to Farmer's Field</Text>
+                      <LiveMap
+                        height={180}
+                        driver={
+                          currentCoords ||
+                          (simPos.current[j.id]
+                            ? { lat: simPos.current[j.id].lat, lng: simPos.current[j.id].lng }
+                            : { lat: j.pickupLat, lng: j.pickupLng })
+                        }
+                        destination={{ lat: j.dropoffLat, lng: j.dropoffLng }}
+                        pickup={{ lat: j.pickupLat, lng: j.pickupLng }}
+                      />
+                    </View>
+                  )}
                   <View style={styles.actions}>
                     {next && (
                       <TouchableOpacity style={styles.primaryBtn} disabled={busyId === j.id} onPress={() => advance(j)}>
@@ -327,6 +457,32 @@ export const DeliveryScreen = ({ onLogout }) => {
         </View>
       </Modal>
 
+      {/* Permission Explanation Modal */}
+      <Modal visible={showPermDialog} transparent animationType="fade" onRequestClose={() => setShowPermDialog(false)}>
+        <View style={styles.overlay}>
+          <View style={styles.dialog}>
+            <Text style={styles.dialogTitle}>📍 GPS Location Required</Text>
+            <Text style={[styles.cardLine, { marginTop: 10, lineHeight: 20 }]}>
+              Kisan Kendra shares your location during active deliveries so farmers can track their orders and machinery approaching their field.
+            </Text>
+            <View style={[styles.secondaryRow, { marginTop: 18 }]}>
+              <TouchableOpacity style={[styles.secondaryBtn, { flex: 1 }]} onPress={() => setShowPermDialog(false)}>
+                <Text style={styles.secondaryText}>Use Demo Route</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.primaryBtn, { flex: 1, marginTop: 0 }]}
+                onPress={() => {
+                  setShowPermDialog(false);
+                  Linking.openSettings().catch(() => {});
+                }}
+              >
+                <Text style={styles.primaryText}>Open Settings</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <ChatModal visible={!!chat} room={chat?.room} title={chat?.title} onClose={() => setChat(null)} />
     </View>
   );
@@ -339,6 +495,40 @@ const styles = StyleSheet.create({
   headerSub: { color: '#BBDEFB', marginTop: 2 },
   logoutBtn: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
   logoutText: { color: '#fff', fontWeight: '700' },
+  gpsIndicatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#E8EAF6',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#C5CAE9',
+  },
+  gpsIndicatorBadge: { flex: 1 },
+  gpsIndicatorText: { fontSize: 12, fontWeight: '700', color: '#1A237E' },
+  fixGpsBtn: {
+    backgroundColor: BLUE,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  fixGpsBtnText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  driverMapContainer: {
+    marginTop: 10,
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#CFD8DC',
+  },
+  driverMapTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#37474F',
+    backgroundColor: '#ECEFF1',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
   toggles: { flexDirection: 'row', gap: 8, padding: 12 },
   toggle: {
     flex: 1,

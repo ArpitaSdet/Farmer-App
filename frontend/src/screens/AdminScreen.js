@@ -22,6 +22,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { useRealtime } from '../services/realtime';
+import { LiveMap } from '../components/LiveMap';
 
 const STEEL = '#37474F';
 const STEEL_LIGHT = '#ECEFF1';
@@ -463,6 +464,7 @@ const PeopleTab = () => {
   const [kycData, setKycData] = useState({ owners: [], drivers: [] });
   const [users, setUsers] = useState([]);
   const [drivers, setDrivers] = useState([]);
+  const [realtimeDrivers, setRealtimeDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [rejectModal, setRejectModal] = useState(null);
@@ -470,14 +472,16 @@ const PeopleTab = () => {
 
   const load = useCallback(async () => {
     try {
-      const [k, u, d] = await Promise.all([
+      const [k, u, d, rt] = await Promise.all([
         api.get('/admin/kyc').catch(() => ({ owners: [], drivers: [] })),
         api.get('/admin/users').catch(() => []),
         api.get('/admin/drivers').catch(() => []),
+        api.getAdminRealtimeDrivers().catch(() => ({ data: [] })),
       ]);
       setKycData(k || { owners: [], drivers: [] });
       setUsers(Array.isArray(u) ? u : []);
       setDrivers(Array.isArray(d) ? d : []);
+      setRealtimeDrivers(Array.isArray(rt?.data) ? rt.data : []);
     } catch (_) {
     } finally {
       setLoading(false);
@@ -486,7 +490,21 @@ const PeopleTab = () => {
   }, []);
 
   useEffect(() => { load(); }, [load]);
-  useRealtime(['user:updated', 'job:updated'], () => load());
+  useRealtime(['user:updated', 'job:updated', 'location:update'], (payload, event) => {
+    if (event === 'location:update') {
+      setRealtimeDrivers((prev) => {
+        const idx = prev.findIndex((d) => d.driverId === payload.driverId);
+        if (idx >= 0) {
+          const updated = [...prev];
+          updated[idx] = { ...updated[idx], ...payload };
+          return updated;
+        }
+        return [...prev, payload];
+      });
+    } else {
+      load();
+    }
+  });
 
   const reviewKyc = async (kind, id, action) => {
     if (action === 'REJECT') {
@@ -629,16 +647,44 @@ const PeopleTab = () => {
 
       {subTab === 'drivers' && (
         <ScrollView style={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} colors={[STEEL]} />}>
-          {drivers.map((d) => (
-            <View key={d.id} style={styles.card}>
-              <View style={styles.rowBetween}>
-                <Text style={styles.cardTitle}>{d.name}</Text>
-                <Badge text={d.isAvailable ? 'ONLINE' : 'OFFLINE'} color={d.isAvailable ? GREEN : STEEL} />
+          <View style={styles.fleetMapCard}>
+            <Text style={styles.fleetMapTitle}>
+              🗺️ Live Fleet Tracking ({realtimeDrivers.length} Online)
+            </Text>
+            <LiveMap
+              height={190}
+              driver={
+                realtimeDrivers[0]
+                  ? {
+                      lat: Number(realtimeDrivers[0].latitude) || 15.3647,
+                      lng: Number(realtimeDrivers[0].longitude) || 75.124,
+                      heading: realtimeDrivers[0].heading,
+                    }
+                  : { lat: 15.3647, lng: 75.124 }
+              }
+              destination={{ lat: 15.3647, lng: 75.124 }}
+            />
+          </View>
+
+          {drivers.map((d) => {
+            const rt = realtimeDrivers.find((r) => r.driverId === d.id);
+            return (
+              <View key={d.id} style={styles.card}>
+                <View style={styles.rowBetween}>
+                  <Text style={styles.cardTitle}>{d.name}</Text>
+                  <Badge text={d.isAvailable ? 'ONLINE' : 'OFFLINE'} color={d.isAvailable ? GREEN : STEEL} />
+                </View>
+                <Text style={styles.cardLine}>📱 {d.phone} · License: {d.licenceNumber}</Text>
+                {d.vehicle && <Text style={styles.cardLine}>🚚 Vehicle: {d.vehicle.vehicleNumber} ({d.vehicle.vehicleType})</Text>}
+                {rt && (
+                  <Text style={[styles.cardLine, { color: GREEN, fontWeight: '700' }]}>
+                    📍 Live GPS: {Number(rt.latitude).toFixed(4)}, {Number(rt.longitude).toFixed(4)}
+                    {rt.speed ? ` · ${rt.speed} km/h` : ''}
+                  </Text>
+                )}
               </View>
-              <Text style={styles.cardLine}>📱 {d.phone} · License: {d.licenceNumber}</Text>
-              {d.vehicle && <Text style={styles.cardLine}>🚚 Vehicle: {d.vehicle.vehicleNumber} ({d.vehicle.vehicleType})</Text>}
-            </View>
-          ))}
+            );
+          })}
           <View style={{ height: 40 }} />
         </ScrollView>
       )}
@@ -932,6 +978,22 @@ const styles = StyleSheet.create({
   activityTitle: { fontSize: 12, fontWeight: '600', color: '#1E293B' },
   activityTime: { fontSize: 10, color: '#94A3B8', marginTop: 2 },
 
+  fleetMapCard: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+  },
+  fleetMapTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: STEEL,
+    backgroundColor: STEEL_LIGHT,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
   card: {
     backgroundColor: '#fff',
     borderRadius: 10,

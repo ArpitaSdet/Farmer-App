@@ -2,7 +2,7 @@
   "expo": {
     "name": "Kisan Kendra - Farmer App",
     "slug": "kisan-kendra",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "orientation": "portrait",
     "primaryColor": "#1B5E20",
     "userInterfaceStyle": "light",
@@ -18,9 +18,14 @@
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
         "INTERNET"
       ],
-      "versionCode": 6
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ],
+      "versionCode": 7
     },
     "web": {
       "bundler": "metro"
@@ -30,7 +35,10 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Kisan Kendra uses your location to share live delivery tracking with farmers."
+          "locationWhenInUsePermission": "Kisan Kendra uses your location to deliver orders and machines to your farm and to show delivery tracking.",
+          "locationAlwaysAndWhenInUsePermission": "Kisan Kendra shares your location during active deliveries so farmers can track their order.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
       "expo-build-properties",

@@ -15,6 +15,7 @@ import { api } from '../services/api';
 import { useRealtime } from '../services/realtime';
 import { ChatModal } from '../components/ChatModal';
 import { confirmAsync } from '../services/ui';
+import { LiveMap } from '../components/LiveMap';
 
 export const OrdersScreen = ({ initialTab = 'products' }) => {
   const { t } = useLanguage();
@@ -23,10 +24,47 @@ export const OrdersScreen = ({ initialTab = 'products' }) => {
   const [productOrders, setProductOrders] = useState([]);
   const [otps, setOtps] = useState({}); // orderId/rentalId -> handover OTP from notifications
   const [liveEta, setLiveEta] = useState({}); // orderId/rentalId -> { distanceKmRemaining, etaMinutes }
+  const [liveTracking, setLiveTracking] = useState({}); // orderId/rentalId -> { driver, destination, pickup, updatedAt }
+  const [now, setNow] = useState(Date.now());
   const [chatRoom, setChatRoom] = useState(null);
   const [machineRentals, setMachineRentals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 2000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const fetchTracking = async (id) => {
+    try {
+      const res = await api.getTracking(id);
+      if (res && res.data) {
+        const d = res.data;
+        setLiveTracking((prev) => ({
+          ...prev,
+          [id]: {
+            driver: d.currentLocation
+              ? {
+                  lat: d.currentLocation.latitude,
+                  lng: d.currentLocation.longitude,
+                  heading: d.currentLocation.heading,
+                }
+              : null,
+            destination: d.dropoffCoords
+              ? { lat: d.dropoffCoords.latitude, lng: d.dropoffCoords.longitude }
+              : null,
+            pickup: d.pickupCoords
+              ? { lat: d.pickupCoords.latitude, lng: d.pickupCoords.longitude }
+              : null,
+            updatedAt: d.currentLocation?.updatedAt ? new Date(d.currentLocation.updatedAt).getTime() : Date.now(),
+          },
+        }));
+      }
+    } catch (e) {
+      // ignore snapshot fetch error
+    }
+  };
 
   const loadAllOrders = async () => {
     try {
@@ -45,6 +83,14 @@ export const OrdersScreen = ({ initialTab = 'products' }) => {
         if (d.handoverOtp && d.rentalId) codes[d.rentalId] = d.handoverOtp;
       });
       setOtps(codes);
+
+      // Fetch initial tracking snapshots for active deliveries
+      ordersRes.orders.forEach((o) => {
+        if (o.status === 'OUT_FOR_DELIVERY') fetchTracking(o.id);
+      });
+      rentalsRes.rentals.forEach((r) => {
+        if (['DISPATCHED', 'NEAR_FARM'].includes(r.status)) fetchTracking(r.id);
+      });
     } catch (e) {
       alert(e.message);
     } finally {
@@ -58,16 +104,34 @@ export const OrdersScreen = ({ initialTab = 'products' }) => {
     if (event === 'order:updated') {
       const o = api.normalizeOrder(payload);
       setProductOrders((prev) => (prev.some((x) => x.id === o.id) ? prev.map((x) => (x.id === o.id ? o : x)) : [o, ...prev]));
+      if (o.status === 'OUT_FOR_DELIVERY') fetchTracking(o.id);
     } else if (event === 'rental:updated') {
       const r = api.normalizeRental(payload);
       setMachineRentals((prev) => (prev.some((x) => x.id === r.id) ? prev.map((x) => (x.id === r.id ? r : x)) : [r, ...prev]));
+      if (['DISPATCHED', 'NEAR_FARM'].includes(r.status)) fetchTracking(r.id);
     } else if (event === 'notification:new') {
       const d = payload.dataJson || {};
       if (d.deliveryOtp && d.orderId) setOtps((p) => ({ ...p, [d.orderId]: d.deliveryOtp }));
       if (d.handoverOtp && d.rentalId) setOtps((p) => ({ ...p, [d.rentalId]: d.handoverOtp }));
     } else if (event === 'location:update') {
-      const key = payload.orderId || payload.rentalId;
-      if (key) setLiveEta((p) => ({ ...p, [key]: payload }));
+      const key = payload.orderId || payload.rentalId || payload.jobId;
+      if (key) {
+        setLiveEta((p) => ({ ...p, [key]: payload }));
+        setLiveTracking((p) => ({
+          ...p,
+          [key]: {
+            ...p[key],
+            driver: {
+              lat: payload.latitude,
+              lng: payload.longitude,
+              heading: payload.heading,
+            },
+            distanceKmRemaining: payload.distanceKmRemaining,
+            etaMinutes: payload.etaMinutes,
+            updatedAt: Date.now(),
+          },
+        }));
+      }
     }
   });
 
@@ -239,6 +303,37 @@ export const OrdersScreen = ({ initialTab = 'products' }) => {
                     </TouchableOpacity>
                   </View>
                 )}
+
+                {order.status === 'OUT_FOR_DELIVERY' && (
+                  <View style={styles.mapCard}>
+                    <Text style={styles.mapCardHeader}>🗺️ Live Delivery Route</Text>
+                    <LiveMap
+                      height={190}
+                      driver={
+                        liveTracking[order.id]?.driver ||
+                        (order.driver
+                          ? { lat: Number(order.address?.latitude) || 15.3647, lng: Number(order.address?.longitude) || 75.124 }
+                          : null)
+                      }
+                      destination={{
+                        lat: Number(order.address?.latitude) || 15.3647,
+                        lng: Number(order.address?.longitude) || 75.124,
+                      }}
+                      pickup={liveTracking[order.id]?.pickup}
+                    />
+                    <View style={styles.mapFooter}>
+                      <Text style={styles.mapFooterText}>
+                        📍 {liveEta[order.id]?.distanceKmRemaining != null ? `${liveEta[order.id].distanceKmRemaining.toFixed(1)} km away` : 'Driver on the way'}
+                        {liveEta[order.id]?.etaMinutes != null ? ` · ETA ${liveEta[order.id].etaMinutes} min` : ''}
+                      </Text>
+                      {liveTracking[order.id]?.updatedAt && (
+                        <Text style={styles.mapUpdatedText}>
+                          Updated {Math.max(1, Math.round((now - liveTracking[order.id].updatedAt) / 1000))}s ago
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                )}
                 {otps[order.id] && order.status === 'OUT_FOR_DELIVERY' && (
                   <View style={styles.otpBox}>
                     <Text style={styles.otpLabel}>Delivery OTP — share only when you receive the items</Text>
@@ -364,6 +459,35 @@ export const OrdersScreen = ({ initialTab = 'products' }) => {
                     📍 Machine {liveEta[rental.id].distanceKmRemaining?.toFixed(1)} km away · ETA {liveEta[rental.id].etaMinutes} min
                   </Text>
                 )}
+
+                {['DISPATCHED', 'NEAR_FARM'].includes(rental.status) && (
+                  <View style={styles.mapCard}>
+                    <Text style={styles.mapCardHeader}>🗺️ Live Machinery Route Map</Text>
+                    <LiveMap
+                      height={190}
+                      driver={
+                        liveTracking[rental.id]?.driver ||
+                        { lat: Number(rental.address?.latitude) || 15.3647, lng: Number(rental.address?.longitude) || 75.124 }
+                      }
+                      destination={{
+                        lat: Number(rental.address?.latitude) || 15.3647,
+                        lng: Number(rental.address?.longitude) || 75.124,
+                      }}
+                      pickup={liveTracking[rental.id]?.pickup}
+                    />
+                    <View style={styles.mapFooter}>
+                      <Text style={styles.mapFooterText}>
+                        📍 {liveEta[rental.id]?.distanceKmRemaining != null ? `${liveEta[rental.id].distanceKmRemaining.toFixed(1)} km away` : 'Machine dispatched'}
+                        {liveEta[rental.id]?.etaMinutes != null ? ` · ETA ${liveEta[rental.id].etaMinutes} min` : ''}
+                      </Text>
+                      {liveTracking[rental.id]?.updatedAt && (
+                        <Text style={styles.mapUpdatedText}>
+                          Updated {Math.max(1, Math.round((now - liveTracking[rental.id].updatedAt) / 1000))}s ago
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                )}
                 <Text style={styles.payInfo}>Total ₹{rental.totalAmount} · {rental.paymentStatus}</Text>
 
                 {['CONFIRMED', 'MACHINE_ASSIGNED', 'OPERATOR_ASSIGNED'].includes(rental.status) && (
@@ -398,6 +522,42 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 10,
     marginTop: 10,
+  },
+  mapCard: {
+    marginTop: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#CFD8DC',
+    overflow: 'hidden',
+  },
+  mapCardHeader: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#37474F',
+    backgroundColor: '#ECEFF1',
+  },
+  mapFooter: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#FAFAFA',
+    borderTopWidth: 1,
+    borderTopColor: '#EEEEEE',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  mapFooterText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2E7D32',
+  },
+  mapUpdatedText: {
+    fontSize: 11,
+    color: '#757575',
+    fontWeight: '500',
   },
   liveTitle: { fontWeight: '700', color: Colors.info },
   liveSub: { color: Colors.textSecondary, marginTop: 6, fontWeight: '600' },

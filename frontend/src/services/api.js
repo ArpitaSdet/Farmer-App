@@ -351,6 +351,10 @@ class ApiService {
     return this.post('/addresses', address);
   }
 
+  updateAddress(id, address) {
+    return this.put(`/addresses/${id}`, address);
+  }
+
   async createOrder(orderData) {
     const d = await this.post('/orders', orderData);
     return { order: this.normalizeOrder({ ...d.order, items: [], statusLogs: [] }), razorpay: d.razorpay };
@@ -458,10 +462,32 @@ class ApiService {
     return this.post(`/driver/jobs/${jobId}/status`, { status, ...extra });
   }
 
-  sendDriverLocation(jobId, latitude, longitude, speed) {
+  sendDriverLocation(jobId, latitude, longitude, speed, heading, accuracy) {
     return this.post('/driver/location', {
-      pings: [{ jobId, latitude, longitude, speed, timestamp: new Date().toISOString() }],
+      pings: [
+        {
+          jobId,
+          latitude: Number(latitude),
+          longitude: Number(longitude),
+          speed: speed !== undefined && speed !== null ? Number(speed) : 30,
+          heading: heading !== undefined && heading !== null ? Number(heading) : 0,
+          accuracy: accuracy !== undefined && accuracy !== null ? Number(accuracy) : 10,
+          timestamp: new Date().toISOString(),
+        },
+      ],
     });
+  }
+
+  sendBatchDriverLocation(pings) {
+    return this.post('/driver/location', { pings });
+  }
+
+  getTracking(jobId) {
+    return this.get(`/tracking/${jobId}`);
+  }
+
+  getAdminRealtimeDrivers() {
+    return this.get('/admin/realtime/drivers');
   }
 }
 

@@ -53,6 +53,39 @@ export const createAddress = wrap(async (req, res) => {
   res.status(201).json({ success: true, data: address });
 });
 
+export const updateAddress = wrap(async (req, res) => {
+  const { label, village, district, state, pincode, latitude, longitude, isDefault } = req.body;
+  const userId = req.user!.id;
+  const addressId = req.params.id;
+
+  const existing = await prisma.address.findFirst({
+    where: { id: addressId, userId },
+  });
+  if (!existing) {
+    throw new AppError(404, ErrorCode.NOT_FOUND, 'Address not found');
+  }
+
+  if (isDefault) {
+    await prisma.address.updateMany({ where: { userId }, data: { isDefault: false } });
+  }
+
+  const updated = await prisma.address.update({
+    where: { id: addressId },
+    data: {
+      ...(label !== undefined ? { label } : {}),
+      ...(village !== undefined ? { village } : {}),
+      ...(district !== undefined ? { district } : {}),
+      ...(state !== undefined ? { state } : {}),
+      ...(pincode !== undefined ? { pincode: String(pincode) } : {}),
+      ...(latitude !== undefined ? { latitude: Number(latitude) } : {}),
+      ...(longitude !== undefined ? { longitude: Number(longitude) } : {}),
+      ...(isDefault !== undefined ? { isDefault: Boolean(isDefault) } : {}),
+    },
+  });
+
+  res.json({ success: true, data: updated });
+});
+
 export const cancelRental = wrap(async (req, res) => {
   const rental = await prisma.rental.findFirst({
     where: { OR: [{ id: req.params.id }, { humanId: req.params.id }], userId: req.user!.id },

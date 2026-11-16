@@ -3,6 +3,7 @@ import { authenticate, requireRole } from '../middleware/auth';
 import {
   listAddresses,
   createAddress,
+  updateAddress,
   listReviews,
   createReview,
   listCoupons,
@@ -18,6 +19,7 @@ export const addressRoutes = Router();
 addressRoutes.use(authenticate);
 addressRoutes.get('/', listAddresses);
 addressRoutes.post('/', createAddress);
+addressRoutes.put('/:id', updateAddress);
 
 export const reviewRoutes = Router();
 reviewRoutes.get('/products/:id/reviews', listReviews);

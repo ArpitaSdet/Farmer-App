@@ -18,11 +18,12 @@ import { useLocation } from '../context/LocationContext';
 import { api, rupees } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { getDefaultAddressId } from '../services/bookings';
+import { LiveMap } from '../components/LiveMap';
 
 export const CartScreen = ({ visible, onClose, onOrderPlaced, onContinueShopping }) => {
   const { t } = useLanguage();
   const { cartItems, updateQuantity, removeFromCart, clearCart, itemsTotal, deliveryFee, grandTotal } = useCart();
-  const { location } = useLocation();
+  const { location, detectGpsLocation, updateLocation, isLocating } = useLocation();
   const { user } = useAuth();
 
   // Checkout flow state
@@ -30,6 +31,11 @@ export const CartScreen = ({ visible, onClose, onOrderPlaced, onContinueShopping
   const [farmerName, setFarmerName] = useState(user?.name || '');
   const [farmerPhone, setFarmerPhone] = useState(user?.phone || '');
   const [deliveryVillage, setDeliveryVillage] = useState(user?.village || location.village || '');
+  const [deliveryCoords, setDeliveryCoords] = useState({
+    lat: location.latitude || 15.3647,
+    lng: location.longitude || 75.124,
+  });
+  const [showPinMap, setShowPinMap] = useState(false);
   const [coupons, setCoupons] = useState([]);
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
@@ -37,7 +43,18 @@ export const CartScreen = ({ visible, onClose, onOrderPlaced, onContinueShopping
   const [orderError, setOrderError] = useState('');
 
   useEffect(() => {
-    if (visible) api.getCoupons().then(setCoupons).catch(() => setCoupons([]));
+    if (visible) {
+      api.getCoupons().then(setCoupons).catch(() => setCoupons([]));
+      // Auto-request location if farmer has no saved GPS coordinates
+      if (!location.gpsEnabled && (!location.latitude || location.latitude === 15.3647)) {
+        detectGpsLocation().then((loc) => {
+          if (loc) {
+            setDeliveryCoords({ lat: loc.latitude, lng: loc.longitude });
+            if (loc.village) setDeliveryVillage(loc.village);
+          }
+        });
+      }
+    }
   }, [visible]);
 
   // Re-evaluate the coupon whenever the cart total changes (mirrors server rules)
@@ -72,7 +89,13 @@ export const CartScreen = ({ visible, onClose, onOrderPlaced, onContinueShopping
     setIsPlacingOrder(true);
     setOrderError('');
     try {
-      const addressId = await getDefaultAddressId(location);
+      const activeLoc = {
+        ...location,
+        latitude: deliveryCoords.lat,
+        longitude: deliveryCoords.lng,
+        village: deliveryVillage || location.village,
+      };
+      const addressId = await getDefaultAddressId(activeLoc);
       const res = await api.createOrder({
         addressId,
         paymentMethod,
@@ -185,6 +208,63 @@ export const CartScreen = ({ visible, onClose, onOrderPlaced, onContinueShopping
               <Text style={styles.districtBadge}>
                 📍 District: {location.district || 'Dharwad'}, {location.state || 'Karnataka'} ({location.pincode || '580031'})
               </Text>
+
+              {/* Delivery GPS Location Card */}
+              <View style={styles.gpsLocationCard}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                  <Text style={{ fontSize: 20, marginRight: 8 }}>📍</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.gpsTitle}>Delivery GPS Coordinates</Text>
+                    <Text style={styles.gpsSubtitle}>
+                      {deliveryCoords.lat.toFixed(4)}, {deliveryCoords.lng.toFixed(4)}
+                      {location.gpsEnabled ? ' (Verified GPS)' : ' (Estimated)'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    style={styles.gpsActionBtn}
+                    onPress={async () => {
+                      const res = await detectGpsLocation();
+                      if (res) {
+                        setDeliveryCoords({ lat: res.latitude, lng: res.longitude });
+                        if (res.village) setDeliveryVillage(res.village);
+                      }
+                    }}
+                  >
+                    <Text style={styles.gpsActionBtnText}>
+                      {isLocating ? 'Acquiring GPS...' : '🎯 Use My Current Location'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.gpsActionBtn, { backgroundColor: '#ECEFF1' }]}
+                    onPress={() => setShowPinMap(!showPinMap)}
+                  >
+                    <Text style={[styles.gpsActionBtnText, { color: '#37474F' }]}>
+                      {showPinMap ? 'Hide Map' : '🗺️ Change Pin'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {showPinMap && (
+                  <View style={{ marginTop: 12 }}>
+                    <Text style={{ fontSize: 12, color: '#616161', marginBottom: 6 }}>
+                      Drag the pin to your field / farm entrance:
+                    </Text>
+                    <LiveMap
+                      height={180}
+                      draggablePin={{
+                        lat: deliveryCoords.lat,
+                        lng: deliveryCoords.lng,
+                        onDragEnd: (coords) => setDeliveryCoords(coords),
+                      }}
+                      onPinChange={(coords) => setDeliveryCoords(coords)}
+                    />
+                  </View>
+                )}
+              </View>
             </View>
 
             <Text style={styles.sectionHeading}>2. Payment Method</Text>
@@ -701,6 +781,39 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '800',
+  },
+  gpsLocationCard: {
+    backgroundColor: '#F1F8E9',
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
+  },
+  gpsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#2E7D32',
+  },
+  gpsSubtitle: {
+    fontSize: 12,
+    color: '#558B2F',
+    marginTop: 2,
+  },
+  gpsActionBtn: {
+    flex: 1,
+    backgroundColor: Colors.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  gpsActionBtnText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   emptyContainer: {
     flex: 1,

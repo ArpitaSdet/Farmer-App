@@ -212,6 +212,41 @@ export async function submitDriverLocation(req: Request, res: Response, next: Ne
       // Assume average speed 30 km/h in rural/semi-urban India
       const speedKmH = latestPing.speed && latestPing.speed > 5 ? latestPing.speed : 30;
       etaMinutes = Math.round((distanceKmRemaining / speedKmH) * 60);
+
+      // Auto "Near farm" status when within 500 m (0.5 km)
+      if (distanceKmRemaining <= 0.5) {
+        if (job.rentalId) {
+          const rental = await prisma.rental.findUnique({ where: { id: job.rentalId }, select: { status: true, userId: true } });
+          if (rental && rental.status === 'DISPATCHED') {
+            await setRentalStatus(job.rentalId, 'NEAR_FARM', driver.userId, 'Driver within 500m of farm');
+            await notifyUser(
+              rental.userId,
+              'Machine Near Your Farm',
+              'Your machinery delivery is within 500 m of your farm.',
+              { type: 'RENTAL_STATUS', rentalId: job.rentalId }
+            );
+          }
+        }
+        if (job.orderId) {
+          const order = await prisma.order.findUnique({ where: { id: job.orderId }, select: { status: true, userId: true } });
+          if (order && order.status === 'OUT_FOR_DELIVERY') {
+            const alreadyNotified = await prisma.notification.findFirst({
+              where: {
+                userId: order.userId,
+                title: 'Driver Near Your Farm',
+              },
+            });
+            if (!alreadyNotified) {
+              await notifyUser(
+                order.userId,
+                'Driver Near Your Farm',
+                'Your delivery driver is within 500 m of your farm.',
+                { type: 'ORDER_STATUS', orderId: job.orderId }
+              );
+            }
+          }
+        }
+      }
     }
 
     // 6. Broadcast real-time GPS position to WebSocket rooms: order, rental, driver, job
@@ -252,8 +287,10 @@ export async function getTrackingSnapshot(req: Request, res: Response, next: Nex
   try {
     const { jobId } = req.params;
 
-    const job = await prisma.deliveryJob.findUnique({
-      where: { id: jobId },
+    const job = await prisma.deliveryJob.findFirst({
+      where: {
+        OR: [{ id: jobId }, { orderId: jobId }, { rentalId: jobId }],
+      },
       include: {
         driver: {
           include: { vehicle: true },
@@ -268,6 +305,18 @@ export async function getTrackingSnapshot(req: Request, res: Response, next: Nex
     });
 
     if (!job) throw new AppError(404, ErrorCode.NOT_FOUND, 'Tracking job not found');
+
+    // Access control: farmer (owner of order/rental), assigned driver, machine owner, or admin
+    const callerId = req.user!.id;
+    const callerRole = req.user!.role;
+    const isFarmer = (job.order && job.order.userId === callerId) || (job.rental && job.rental.userId === callerId);
+    const isDriver = job.driver && job.driver.userId === callerId;
+    const isMachineOwner = job.rental && job.rental.machine && job.rental.machine.ownerId === callerId;
+    const isAdmin = callerRole === 'ADMIN' || (req.user as any)?.adminSubRole === 'SUPER_ADMIN';
+
+    if (!isFarmer && !isDriver && !isMachineOwner && !isAdmin) {
+      throw new AppError(403, ErrorCode.FORBIDDEN, 'You do not have permission to view tracking for this delivery');
+    }
 
     // Retrieve latest cached GPS coordinate from Redis or fallback to DB
     let latestCoords = null;

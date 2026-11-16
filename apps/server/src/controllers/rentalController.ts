@@ -110,6 +110,10 @@ export async function createRentalBooking(req: Request, res: Response, next: Nex
       throw new AppError(404, ErrorCode.NOT_FOUND, 'Farm address not found');
     }
 
+    if (!env.DEMO_MODE && (!address.latitude || !address.longitude)) {
+      throw new AppError(400, ErrorCode.VALIDATION_ERROR, 'Farm address must include valid GPS coordinates');
+    }
+
     const hours = Math.max(1, parseFloat(durationHours));
     const humanId = await generateHumanRentalId();
 

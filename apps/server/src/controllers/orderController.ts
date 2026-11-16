@@ -42,6 +42,10 @@ export async function createOrder(req: Request, res: Response, next: NextFunctio
       throw new AppError(404, ErrorCode.NOT_FOUND, 'Delivery address not found');
     }
 
+    if (!env.DEMO_MODE && (!address.latitude || !address.longitude)) {
+      throw new AppError(400, ErrorCode.VALIDATION_ERROR, 'Delivery address must include valid GPS coordinates');
+    }
+
     // Fetch user cart
     const cart = await prisma.cart.findUnique({
       where: { userId },
