@@ -17,8 +17,8 @@ import {
   TextInput,
   Alert,
   Platform,
+  StatusBar,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { useRealtime } from '../services/realtime';
@@ -799,7 +799,12 @@ const MAIN_TABS = [
 export const AdminScreen = ({ onLogout }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
-  const insets = useSafeAreaInsets();
+  const insets = {
+    top: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0,
+    bottom: 8,
+    left: 0,
+    right: 0,
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>

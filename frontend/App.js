@@ -7,8 +7,8 @@ import {
   ActivityIndicator,
   Text,
   Dimensions,
+  SafeAreaView,
 } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { LanguageProvider } from './src/context/LanguageContext';
 import { LocationProvider } from './src/context/LocationContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -44,20 +44,18 @@ const RootContent = () => {
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={styles.root}>
-        <StatusBar barStyle="light-content" backgroundColor={Colors.primary} translucent={false} />
-        <LanguageProvider>
-          <LocationProvider>
-            <AuthProvider>
-              <CartProvider>
-                <RootContent />
-              </CartProvider>
-            </AuthProvider>
-          </LocationProvider>
-        </LanguageProvider>
-      </SafeAreaView>
-    </SafeAreaProvider>
+    <SafeAreaView style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} translucent={false} />
+      <LanguageProvider>
+        <LocationProvider>
+          <AuthProvider>
+            <CartProvider>
+              <RootContent />
+            </CartProvider>
+          </AuthProvider>
+        </LocationProvider>
+      </LanguageProvider>
+    </SafeAreaView>
   );
 }
 

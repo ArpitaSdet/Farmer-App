@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, BackHandler, Alert } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, BackHandler, Alert, Platform, StatusBar } from 'react-native';
 import { Colors } from '../theme/colors';
 import { Spacing } from '../theme/spacing';
 import { useLanguage } from '../context/LanguageContext';
@@ -18,7 +17,12 @@ import { CartScreen } from '../screens/CartScreen';
 export const BottomNavigator = () => {
   const { t } = useLanguage();
   const { cartCount } = useCart();
-  const insets = useSafeAreaInsets();
+  const insets = {
+    top: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0,
+    bottom: 8,
+    left: 0,
+    right: 0,
+  };
 
   const [activeTab, setActiveTab] = useState('Home'); // Home, Shop, Rent, Orders, Profile
   const [shopRouteParams, setShopRouteParams] = useState(null);
