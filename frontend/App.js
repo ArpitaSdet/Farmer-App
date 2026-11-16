@@ -8,6 +8,7 @@ import {
   Text,
   Dimensions,
   SafeAreaView,
+  TouchableOpacity,
 } from 'react-native';
 import { LanguageProvider } from './src/context/LanguageContext';
 import { LocationProvider } from './src/context/LocationContext';
@@ -42,20 +43,55 @@ const RootContent = () => {
   return <BottomNavigator />;
 };
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('ErrorBoundary caught:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={{ fontSize: 48, marginBottom: 12 }}>⚠️</Text>
+          <Text style={styles.errorTitle}>Something went wrong</Text>
+          <Text style={styles.errorSubtitle}>
+            {this.state.error?.message || 'The application encountered an unexpected error.'}
+          </Text>
+          <TouchableOpacity
+            style={styles.retryBtn}
+            onPress={() => this.setState({ hasError: false, error: null })}
+          >
+            <Text style={styles.retryBtnText}>Restart Application</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   return (
-    <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} translucent={false} />
-      <LanguageProvider>
-        <LocationProvider>
-          <AuthProvider>
-            <CartProvider>
-              <RootContent />
-            </CartProvider>
-          </AuthProvider>
-        </LocationProvider>
-      </LanguageProvider>
-    </SafeAreaView>
+    <ErrorBoundary>
+      <SafeAreaView style={styles.root}>
+        <StatusBar barStyle="light-content" backgroundColor={Colors.primary} translucent={false} />
+        <LanguageProvider>
+          <LocationProvider>
+            <AuthProvider>
+              <CartProvider>
+                <RootContent />
+              </CartProvider>
+            </AuthProvider>
+          </LocationProvider>
+        </LanguageProvider>
+      </SafeAreaView>
+    </ErrorBoundary>
   );
 }
 
@@ -77,5 +113,37 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: Colors.primary,
     marginBottom: 4,
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    padding: 24,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#212121',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorSubtitle: {
+    fontSize: 14,
+    color: '#757575',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  retryBtn: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 15,
   },
 });

@@ -14,7 +14,7 @@ const getDefaultServerUrl = () => {
     if (!window.location.origin.includes('localhost:8081')) return window.location.origin;
   }
   if (extra) return extra;
-  return 'http://localhost:5000';
+  return 'https://farmer-app-klid.onrender.com';
 };
 
 const stripSlash = (u) => (u || '').trim().replace(/\/+$/, '');
